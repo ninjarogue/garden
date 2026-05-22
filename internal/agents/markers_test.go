@@ -95,7 +95,6 @@ func TestSyncIndexCreatesManagedBlockWhenAbsent(t *testing.T) {
 	got, err := SyncIndex("# Human Rules\n", []IndexCard{{
 		Path:  ".garden/context/routes-query-modules.md",
 		Scope: []string{"src/routes/**"},
-		Tags:  []string{"database"},
 	}})
 	if err != nil {
 		t.Fatalf("SyncIndex returned error: %v", err)
@@ -136,7 +135,6 @@ func TestSyncIndexAddsMissingIndexInsideExistingGardenBlock(t *testing.T) {
 	got, err := SyncIndex(doc, []IndexCard{{
 		Path:  ".garden/context/context-card-format.md",
 		Scope: []string{"internal/contextcard/**"},
-		Tags:  []string{"frontmatter"},
 	}})
 	if err != nil {
 		t.Fatalf("SyncIndex returned error: %v", err)

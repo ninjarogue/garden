@@ -17,7 +17,6 @@ const (
 type IndexCard struct {
 	Path  string
 	Scope []string
-	Tags  []string
 }
 
 type LintOptions struct {
@@ -183,14 +182,6 @@ func validateIndexCards(cards []IndexCard) error {
 				return err
 			}
 			if err := rejectCompactIndexRowSyntax("context card scope", scope); err != nil {
-				return err
-			}
-		}
-		for _, tag := range card.Tags {
-			if err := rejectReservedMarker("context card tag", tag); err != nil {
-				return err
-			}
-			if err := rejectCompactIndexItemSyntax("context card tag", tag); err != nil {
 				return err
 			}
 		}

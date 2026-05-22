@@ -149,7 +149,6 @@ Use query modules.
 	block, err := agents.RenderBlock([]agents.IndexCard{{
 		Path:  ".garden/context/routes-query-modules.md",
 		Scope: []string{"src/routes/**"},
-		Tags:  []string{"database"},
 	}})
 	if err != nil {
 		t.Fatalf("RenderBlock returned error: %v", err)

@@ -149,7 +149,6 @@ func agentsIndexCards(cards []contextcard.Card) []agents.IndexCard {
 		indexCards = append(indexCards, agents.IndexCard{
 			Path:  card.Path,
 			Scope: card.Scope,
-			Tags:  card.Tags,
 		})
 	}
 	return indexCards

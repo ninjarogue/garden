@@ -6,18 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/aric/garden/internal/agents"
+	"github.com/aric/garden/internal/app"
 )
 
-type AgentsChange struct {
-	Path     string
-	Before   string
-	After    string
-	Applied  bool
-	Findings []agents.Finding
-}
-
-func WriteAgentsChange(w io.Writer, change AgentsChange, action string) error {
+func WriteAgentsChange(w io.Writer, change app.AgentsChange, action string) error {
 	diff := unifiedDiff(filepath.Base(change.Path), change.Before, change.After)
 	if _, err := fmt.Fprint(w, diff); err != nil {
 		return err
@@ -43,7 +35,7 @@ func WriteAgentsChange(w io.Writer, change AgentsChange, action string) error {
 	return err
 }
 
-func WriteLint(w io.Writer, findings []agents.Finding) (bool, error) {
+func WriteLint(w io.Writer, findings []app.Finding) (bool, error) {
 	if len(findings) == 0 {
 		_, err := fmt.Fprintln(w, "Garden lint passed.")
 		return false, err
@@ -52,7 +44,7 @@ func WriteLint(w io.Writer, findings []agents.Finding) (bool, error) {
 	return hasErrorFinding(findings), err
 }
 
-func writeFindings(w io.Writer, findings []agents.Finding) (int, error) {
+func writeFindings(w io.Writer, findings []app.Finding) (int, error) {
 	written := 0
 	for _, finding := range findings {
 		n, err := fmt.Fprintf(w, "%s %s: %s\n", finding.Severity, finding.Code, finding.Message)
@@ -64,7 +56,7 @@ func writeFindings(w io.Writer, findings []agents.Finding) (int, error) {
 	return written, nil
 }
 
-func hasErrorFinding(findings []agents.Finding) bool {
+func hasErrorFinding(findings []app.Finding) bool {
 	for _, finding := range findings {
 		if finding.Severity == "error" {
 			return true

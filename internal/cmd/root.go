@@ -132,13 +132,7 @@ func newAgentsSyncCommand(garden *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return output.WriteAgentsChange(cmd.OutOrStdout(), output.AgentsChange{
-				Path:     change.Path,
-				Before:   change.Before,
-				After:    change.After,
-				Applied:  change.Applied,
-				Findings: change.Findings,
-			}, "sync")
+			return output.WriteAgentsChange(cmd.OutOrStdout(), change, "sync")
 		},
 	}
 	cmd.Flags().BoolVar(&input.Apply, "apply", false, "write AGENTS.md instead of previewing")

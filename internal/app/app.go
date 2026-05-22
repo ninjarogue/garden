@@ -21,7 +21,6 @@ type App struct {
 
 type NewCardInput struct {
 	Slug  string
-	Kind  string
 	Scope []string
 	Tags  []string
 }
@@ -52,7 +51,6 @@ func (a *App) Init() error {
 func (a *App) NewCard(input NewCardInput) (contextcard.Card, error) {
 	return a.cards.Create(contextcard.CreateInput{
 		Slug:  input.Slug,
-		Kind:  input.Kind,
 		Scope: input.Scope,
 		Tags:  input.Tags,
 	})
@@ -150,7 +148,6 @@ func agentsIndexCards(cards []contextcard.Card) []agents.IndexCard {
 	for _, card := range cards {
 		indexCards = append(indexCards, agents.IndexCard{
 			Path:  card.Path,
-			Kind:  card.Kind,
 			Scope: card.Scope,
 			Tags:  card.Tags,
 		})

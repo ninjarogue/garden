@@ -9,7 +9,6 @@ import (
 
 func TestParseReadsMarkdownCardFrontmatterAndBody(t *testing.T) {
 	card, err := Parse(".garden/context/routes-query-modules.md", []byte(`---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -30,9 +29,6 @@ Route files should use query modules.
 	}
 	if card.Path != ".garden/context/routes-query-modules.md" {
 		t.Fatalf("Path = %q", card.Path)
-	}
-	if card.Kind != KindRule {
-		t.Fatalf("Kind = %q, want %q", card.Kind, KindRule)
 	}
 	assertStrings(t, card.Scope, []string{"src/routes/**"})
 	assertStrings(t, card.Tags, []string{"database", "tenant-scoping"})
@@ -55,51 +51,45 @@ func TestParseRejectsInvalidMarkdownCards(t *testing.T) {
 			wantErr: "YAML frontmatter is required",
 		},
 		{
-			name:    "invalid kind",
-			path:    ".garden/context/routes-query-modules.md",
-			content: "---\nkind: urgent\nscope:\n  - src/routes/**\n---\n\nUse query modules.\n",
-			wantErr: "invalid kind",
-		},
-		{
 			name:    "missing scope",
 			path:    ".garden/context/routes-query-modules.md",
-			content: "---\nkind: rule\nscope: []\n---\n\nUse query modules.\n",
+			content: "---\nscope: []\n---\n\nUse query modules.\n",
 			wantErr: "scope must include at least one glob",
 		},
 		{
 			name:    "scope must be list",
 			path:    ".garden/context/routes-query-modules.md",
-			content: "---\nkind: rule\nscope: src/routes/**\n---\n\nUse query modules.\n",
+			content: "---\nscope: src/routes/**\n---\n\nUse query modules.\n",
 			wantErr: "scope must be a list",
 		},
 		{
 			name:    "placeholder scope",
 			path:    ".garden/context/routes-query-modules.md",
-			content: "---\nkind: rule\nscope:\n  - CHANGE_ME\n---\n\nUse query modules.\n",
+			content: "---\nscope:\n  - CHANGE_ME\n---\n\nUse query modules.\n",
 			wantErr: "scope cannot contain CHANGE_ME",
 		},
 		{
 			name:    "tags must be list",
 			path:    ".garden/context/routes-query-modules.md",
-			content: "---\nkind: rule\nscope:\n  - src/routes/**\ntags: database\n---\n\nUse query modules.\n",
+			content: "---\nscope:\n  - src/routes/**\ntags: database\n---\n\nUse query modules.\n",
 			wantErr: "tags must be a list",
 		},
 		{
 			name:    "tag cannot contain compact index delimiter",
 			path:    ".garden/context/routes-query-modules.md",
-			content: "---\nkind: rule\nscope:\n  - src/routes/**\ntags:\n  - database,tenant\n---\n\nUse query modules.\n",
+			content: "---\nscope:\n  - src/routes/**\ntags:\n  - database,tenant\n---\n\nUse query modules.\n",
 			wantErr: "tag contains compact index syntax delimiter",
 		},
 		{
 			name:    "empty body",
 			path:    ".garden/context/routes-query-modules.md",
-			content: "---\nkind: rule\nscope:\n  - src/routes/**\n---\n\n  \n",
+			content: "---\nscope:\n  - src/routes/**\n---\n\n  \n",
 			wantErr: "body cannot be empty",
 		},
 		{
 			name:    "invalid slug",
 			path:    ".garden/context/Routes_Query_Modules.md",
-			content: "---\nkind: rule\nscope:\n  - src/routes/**\n---\n\nUse query modules.\n",
+			content: "---\nscope:\n  - src/routes/**\n---\n\nUse query modules.\n",
 			wantErr: "invalid card slug",
 		},
 	}
@@ -123,7 +113,6 @@ func TestStoreCreatesCardWithYAMLSensitiveGlobScope(t *testing.T) {
 
 	card, err := store.Create(CreateInput{
 		Slug:  "global-background",
-		Kind:  KindBackground,
 		Scope: []string{"**/*", "*.go"},
 		Tags:  []string{"workflow"},
 	})
@@ -137,7 +126,6 @@ func TestStoreCreatesCardWithYAMLSensitiveGlobScope(t *testing.T) {
 		t.Fatalf("read card: %v", err)
 	}
 	wantCard := `---
-kind: background
 scope:
   - '**/*'
   - '*.go'
@@ -165,7 +153,6 @@ func TestStoreCreateRejectsUnsyncableTagWithoutWritingCard(t *testing.T) {
 
 	_, err := store.Create(CreateInput{
 		Slug:  "bad-tag",
-		Kind:  KindRule,
 		Scope: []string{"src/**"},
 		Tags:  []string{"database,tenant"},
 	})
@@ -184,11 +171,11 @@ func TestStoreCreateRejectsDuplicateCardSlug(t *testing.T) {
 	root := t.TempDir()
 	store := NewStore(root)
 
-	if _, err := store.Create(CreateInput{Slug: "routes-query-modules", Kind: KindRule, Scope: []string{"src/routes/**"}}); err != nil {
+	if _, err := store.Create(CreateInput{Slug: "routes-query-modules", Scope: []string{"src/routes/**"}}); err != nil {
 		t.Fatalf("first Create returned error: %v", err)
 	}
 
-	_, err := store.Create(CreateInput{Slug: "routes-query-modules", Kind: KindRule, Scope: []string{"src/routes/**"}})
+	_, err := store.Create(CreateInput{Slug: "routes-query-modules", Scope: []string{"src/routes/**"}})
 	if err == nil {
 		t.Fatal("expected duplicate card error")
 	}
@@ -211,7 +198,6 @@ func TestStoreCreatesContextDirectoryAndCardTemplate(t *testing.T) {
 
 	card, err := store.Create(CreateInput{
 		Slug:  "routes-query-modules",
-		Kind:  KindRule,
 		Scope: []string{"src/routes/**"},
 		Tags:  []string{"database"},
 	})
@@ -227,7 +213,6 @@ func TestStoreCreatesContextDirectoryAndCardTemplate(t *testing.T) {
 		t.Fatalf("read card: %v", err)
 	}
 	wantCard := `---
-kind: rule
 scope:
   - src/routes/**
 tags:

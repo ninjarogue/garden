@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/aric/garden/internal/agents"
-	"github.com/aric/garden/internal/contextcard"
 )
 
 func TestNewCardCreatesMarkdownCard(t *testing.T) {
@@ -19,7 +18,6 @@ func TestNewCardCreatesMarkdownCard(t *testing.T) {
 
 	card, err := garden.NewCard(NewCardInput{
 		Slug:  "routes-query-modules",
-		Kind:  contextcard.KindRule,
 		Scope: []string{"src/routes/**"},
 		Tags:  []string{"database"},
 	})
@@ -35,7 +33,6 @@ func TestNewCardCreatesMarkdownCard(t *testing.T) {
 		t.Fatalf("read card: %v", err)
 	}
 	wantCard := `---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -58,7 +55,6 @@ func TestAgentsSyncPreviewFromContextCards(t *testing.T) {
 		t.Fatalf("Init returned error: %v", err)
 	}
 	writeCard(t, root, "routes-query-modules", `---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -93,7 +89,7 @@ Use query modules.
 		agents.IndexStartMarker,
 		"[Garden Context Index]|root:.garden/context",
 		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
-		"|src/routes/**:{rule,database,.garden/context/routes-query-modules.md}",
+		"|src/routes/**:.garden/context/routes-query-modules.md",
 		agents.IndexEndMarker,
 		agents.AgentsEndMarker,
 	}, "\n") + "\n"
@@ -115,7 +111,6 @@ func TestAgentsSyncApplyWritesAGENTS(t *testing.T) {
 		t.Fatalf("Init returned error: %v", err)
 	}
 	writeCard(t, root, "routes-query-modules", `---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -150,7 +145,6 @@ func TestLintReportsStaleAgentsIndex(t *testing.T) {
 		t.Fatalf("Init returned error: %v", err)
 	}
 	writeCard(t, root, "routes-query-modules", `---
-kind: rule
 scope:
   - src/routes/**
 ---
@@ -185,9 +179,7 @@ func TestLintReportsInvalidContextCard(t *testing.T) {
 		t.Fatalf("Init returned error: %v", err)
 	}
 	writeCard(t, root, "broken-card", `---
-kind: urgent
-scope:
-  - src/routes/**
+scope: src/routes/**
 ---
 
 Use query modules.
@@ -207,7 +199,7 @@ Use query modules.
 	assertAppFindings(t, findings, []agents.Finding{{
 		Severity: "error",
 		Code:     "invalid-context-card",
-		Message:  ".garden/context/broken-card.md: invalid kind \"urgent\"; expected rule, exception, warning, workflow, or background",
+		Message:  ".garden/context/broken-card.md: scope must be a list",
 	}})
 }
 

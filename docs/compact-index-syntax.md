@@ -52,8 +52,8 @@ Current examples should use the base pattern only:
 ```txt
 [Garden Context Index]|root:.garden/context
 |IMPORTANT:Before editing a listed area, inspect the matching context card
-|src/routes/**:{rule,database,tenant-scoping,.garden/context/routes-query-modules.md}
-|internal/contextcard/**:{workflow,frontmatter,.garden/context/context-card-format.md}
+|src/routes/**:.garden/context/routes-query-modules.md
+|internal/contextcard/**:.garden/context/context-card-format.md
 ```
 
 Card paths like `.garden/context/routes-query-modules.md` are plain index items, not compact-index field vocabulary.

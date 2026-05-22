@@ -14,35 +14,15 @@ const (
 	IndexEndMarker    = "<!-- garden:index:end -->"
 )
 
-type Context struct {
-	Purpose     string
-	Setup       []string
-	Build       []string
-	Lint        []string
-	Typecheck   []string
-	Test        []string
-	Structure   []Entry
-	Conventions []string
-	Docs        []Entry
-	Notes       []string
-}
-
-type Entry struct {
-	Path string
-	Text string
-}
-
-type IndexMemory struct {
-	ID     string
-	Scope  []string
-	Always bool
-	Tags   []string
+type IndexCard struct {
+	Path  string
+	Kind  string
+	Scope []string
+	Tags  []string
 }
 
 type LintOptions struct {
-	MaxLines     int
-	MaxBytes     int
-	MemoryBodies []string
+	ExpectedIndex string
 }
 
 type Finding struct {
@@ -51,21 +31,19 @@ type Finding struct {
 	Message  string
 }
 
-func ParseEntry(value string) (Entry, error) {
-	path, text, ok := strings.Cut(value, ":")
-	path = strings.TrimSpace(path)
-	text = strings.TrimSpace(text)
-	if !ok || path == "" || text == "" {
-		return Entry{}, fmt.Errorf("expected <path>: <description>")
-	}
-	return Entry{Path: path, Text: text}, nil
+type indexRow struct {
+	items []string
+	seen  map[string]bool
 }
 
-func RenderBlock(ctx Context, memories []IndexMemory) (string, error) {
-	if err := validateContext(ctx); err != nil {
-		return "", err
-	}
-	index, err := RenderIndex(memories)
+type markerRange struct {
+	exists bool
+	start  int
+	end    int
+}
+
+func RenderBlock(cards []IndexCard) (string, error) {
+	index, err := RenderIndex(cards)
 	if err != nil {
 		return "", err
 	}
@@ -73,32 +51,10 @@ func RenderBlock(ctx Context, memories []IndexMemory) (string, error) {
 	var b strings.Builder
 	b.WriteString(AgentsStartMarker)
 	b.WriteString("\n")
-	b.WriteString("## Garden Agent Context\n")
-
-	if strings.TrimSpace(ctx.Purpose) != "" {
-		b.WriteString("\n### Project Purpose\n")
-		b.WriteString(strings.TrimSpace(ctx.Purpose))
-		b.WriteString("\n")
-	}
-
-	writeCommands(&b, "Validation", []commandGroup{
-		{Label: "Setup", Values: ctx.Setup},
-		{Label: "Build", Values: ctx.Build},
-		{Label: "Lint", Values: ctx.Lint},
-		{Label: "Typecheck", Values: ctx.Typecheck},
-		{Label: "Test", Values: ctx.Test},
-	})
-	writeEntries(&b, "Project Structure", ctx.Structure)
-	writeList(&b, "Conventions", ctx.Conventions)
-	writeEntries(&b, "Docs", ctx.Docs)
-	writeList(&b, "Notes", ctx.Notes)
-
-	b.WriteString("\n### Garden Memory\n")
-	b.WriteString("This repo uses Garden for scoped repo memory.\n\n")
-	b.WriteString("Source of truth: `.garden/memories.json`\n\n")
-	b.WriteString("Before coding in an area with matching memory, run:\n\n")
-	b.WriteString("`garden pack --path <file-or-dir> --task \"<what you are doing>\"`\n\n")
-	b.WriteString("Memory index:\n")
+	b.WriteString("### Garden Context\n\n")
+	b.WriteString("Detailed agent context lives in `.garden/context/*.md`.\n\n")
+	b.WriteString("Before editing a listed area, inspect the matching context card.\n\n")
+	b.WriteString("Index:\n")
 	b.WriteString(IndexStartMarker)
 	b.WriteString("\n")
 	b.WriteString(index)
@@ -109,51 +65,45 @@ func RenderBlock(ctx Context, memories []IndexMemory) (string, error) {
 	return b.String(), nil
 }
 
-func RenderIndex(memories []IndexMemory) (string, error) {
-	if err := validateIndexMemories(memories); err != nil {
+func RenderIndex(cards []IndexCard) (string, error) {
+	if err := validateIndexCards(cards); err != nil {
 		return "", err
 	}
 
+	cards = sortedCards(cards)
 	rows := map[string]*indexRow{}
-	for _, mem := range memories {
-		scopes := compactScopes(mem)
-		for _, scope := range scopes {
+	for _, card := range cards {
+		for _, scope := range cleanStrings(card.Scope) {
 			row := rows[scope]
 			if row == nil {
-				row = &indexRow{tags: map[string]bool{}, ids: map[string]bool{}}
+				row = &indexRow{seen: map[string]bool{}}
 				rows[scope] = row
 			}
-			for _, tag := range mem.Tags {
-				tag = strings.TrimSpace(tag)
-				if tag != "" {
-					row.tags[tag] = true
-				}
+			row.add(strings.TrimSpace(card.Kind))
+			for _, tag := range cleanStrings(card.Tags) {
+				row.add(tag)
 			}
-			if strings.TrimSpace(mem.ID) != "" {
-				row.ids[strings.TrimSpace(mem.ID)] = true
-			}
+			row.add(strings.TrimSpace(card.Path))
 		}
 	}
-
-	var b strings.Builder
-	b.WriteString("[Garden Memory Index]|root:.garden/memories.json\n")
-	b.WriteString("|IMPORTANT:Prefer Garden repo memory over guessing when relevant\n")
 
 	scopes := make([]string, 0, len(rows))
 	for scope := range rows {
 		scopes = append(scopes, scope)
 	}
 	sort.Strings(scopes)
+
+	var b strings.Builder
+	b.WriteString("[Garden Context Index]|root:.garden/context\n")
+	b.WriteString("|IMPORTANT:Before editing a listed area, inspect the matching context card\n")
 	for _, scope := range scopes {
-		items := sortedKeys(rows[scope].tags)
-		items = append(items, sortedKeys(rows[scope].ids)...)
-		if len(items) == 0 {
+		if len(rows[scope].items) == 0 {
 			continue
 		}
 		b.WriteString("|")
 		b.WriteString(scope)
 		b.WriteString(":{")
-		b.WriteString(strings.Join(items, ","))
+		b.WriteString(strings.Join(rows[scope].items, ","))
 		b.WriteString("}\n")
 	}
 	return b.String(), nil
@@ -171,19 +121,23 @@ func UpsertBlock(doc string, block string) (string, error) {
 	return doc[:rangeInfo.start] + block + doc[rangeInfo.end:], nil
 }
 
-func SyncIndex(doc string, memories []IndexMemory) (string, error) {
+func SyncIndex(doc string, cards []IndexCard) (string, error) {
 	agentsRange, err := findSingleMarkerRange(doc, AgentsStartMarker, AgentsEndMarker, "Garden agents")
 	if err != nil {
 		return "", err
 	}
 	if !agentsRange.exists {
-		return "", fmt.Errorf("Garden agents block is missing; run garden agents update first")
+		block, err := RenderBlock(cards)
+		if err != nil {
+			return "", err
+		}
+		return UpsertBlock(doc, block)
 	}
-	index, err := RenderIndex(memories)
+
+	index, err := RenderIndex(cards)
 	if err != nil {
 		return "", err
 	}
-
 	block := doc[agentsRange.start:agentsRange.end]
 	newBlock, err := syncIndexInBlock(block, index)
 	if err != nil {
@@ -193,223 +147,76 @@ func SyncIndex(doc string, memories []IndexMemory) (string, error) {
 }
 
 func Lint(doc string, opts LintOptions) []Finding {
-	findings := []Finding{}
-	if opts.MaxLines > 0 && lineCount(doc) > opts.MaxLines {
-		findings = append(findings, warning("line-budget", fmt.Sprintf("AGENTS.md has %d lines, over budget %d", lineCount(doc), opts.MaxLines)))
-	}
-	if opts.MaxBytes > 0 && len([]byte(doc)) > opts.MaxBytes {
-		findings = append(findings, warning("size-budget", fmt.Sprintf("AGENTS.md has %d bytes, over budget %d", len([]byte(doc)), opts.MaxBytes)))
-	}
-
 	rangeInfo, err := findSingleMarkerRange(doc, AgentsStartMarker, AgentsEndMarker, "Garden agents")
 	if err != nil {
-		findings = append(findings, Finding{Severity: "error", Code: "garden-agents-markers", Message: err.Error()})
-		return findings
+		return []Finding{errorFinding("garden-agents-markers", err.Error())}
 	}
 	if !rangeInfo.exists {
-		findings = append(findings, warning("missing-garden-agents-block", "Garden agents block is missing"))
-		return findings
+		return []Finding{errorFinding("missing-garden-agents-block", "Garden agents block is missing")}
 	}
 
 	block := doc[rangeInfo.start:rangeInfo.end]
-	if !strings.Contains(block, "### Project Purpose") {
-		findings = append(findings, warning("missing-project-purpose", "Garden agents block is missing Project Purpose"))
+	indexRange, err := findSingleMarkerRange(block, IndexStartMarker, IndexEndMarker, "Garden index")
+	if err != nil {
+		return []Finding{errorFinding("garden-index-markers", err.Error())}
 	}
-	if !strings.Contains(block, "### Validation") {
-		findings = append(findings, warning("missing-validation", "Garden agents block is missing Validation"))
+	if !indexRange.exists {
+		return []Finding{errorFinding("missing-garden-index", "Garden context index is missing")}
 	}
-	if !strings.Contains(block, "### Project Structure") {
-		findings = append(findings, warning("missing-project-structure", "Garden agents block is missing Project Structure"))
-	}
-	if _, err := findSingleMarkerRange(block, IndexStartMarker, IndexEndMarker, "Garden index"); err != nil {
-		findings = append(findings, Finding{Severity: "error", Code: "garden-index-markers", Message: err.Error()})
-	}
-
-	for _, body := range opts.MemoryBodies {
-		body = strings.TrimSpace(body)
-		if body != "" && strings.Contains(doc, body) {
-			findings = append(findings, warning("full-memory-body", "AGENTS.md appears to contain a full Garden memory body"))
-			break
-		}
-	}
-	for _, risky := range []string{"password", "secret", "api key", "apikey", "token"} {
-		if strings.Contains(strings.ToLower(doc), risky) {
-			findings = append(findings, warning("secret-like-content", "AGENTS.md contains secret-like wording; do not store secrets in agent instructions"))
-			break
-		}
-	}
-
-	return findings
-}
-
-type commandGroup struct {
-	Label  string
-	Values []string
-}
-
-type indexRow struct {
-	tags map[string]bool
-	ids  map[string]bool
-}
-
-type markerRange struct {
-	exists bool
-	start  int
-	end    int
-}
-
-func writeCommands(b *strings.Builder, title string, groups []commandGroup) {
-	if !hasAnyCommand(groups) {
-		return
-	}
-	b.WriteString("\n### ")
-	b.WriteString(title)
-	b.WriteString("\n")
-	for _, group := range groups {
-		for _, value := range cleanStrings(group.Values) {
-			b.WriteString("- ")
-			b.WriteString(group.Label)
-			b.WriteString(": `")
-			b.WriteString(value)
-			b.WriteString("`\n")
-		}
-	}
-}
-
-func writeEntries(b *strings.Builder, title string, entries []Entry) {
-	cleaned := cleanEntries(entries)
-	if len(cleaned) == 0 {
-		return
-	}
-	b.WriteString("\n### ")
-	b.WriteString(title)
-	b.WriteString("\n")
-	for _, entry := range cleaned {
-		b.WriteString("- `")
-		b.WriteString(entry.Path)
-		b.WriteString("`: ")
-		b.WriteString(entry.Text)
-		b.WriteString("\n")
-	}
-}
-
-func writeList(b *strings.Builder, title string, values []string) {
-	values = cleanStrings(values)
-	if len(values) == 0 {
-		return
-	}
-	b.WriteString("\n### ")
-	b.WriteString(title)
-	b.WriteString("\n")
-	for _, value := range values {
-		b.WriteString("- ")
-		b.WriteString(value)
-		b.WriteString("\n")
-	}
-}
-
-func hasAnyCommand(groups []commandGroup) bool {
-	for _, group := range groups {
-		if len(cleanStrings(group.Values)) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-func cleanEntries(entries []Entry) []Entry {
-	cleaned := make([]Entry, 0, len(entries))
-	for _, entry := range entries {
-		path := strings.TrimSpace(entry.Path)
-		text := strings.TrimSpace(entry.Text)
-		if path != "" && text != "" {
-			cleaned = append(cleaned, Entry{Path: path, Text: text})
-		}
-	}
-	return cleaned
-}
-
-func cleanStrings(values []string) []string {
-	cleaned := make([]string, 0, len(values))
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value != "" {
-			cleaned = append(cleaned, value)
-		}
-	}
-	return cleaned
-}
-
-func compactScopes(mem IndexMemory) []string {
-	if mem.Always && len(mem.Scope) == 0 {
-		return []string{"**/*"}
-	}
-	scopes := cleanStrings(mem.Scope)
-	return scopes
-}
-
-func validateContext(ctx Context) error {
-	if err := rejectReservedMarker("--purpose", ctx.Purpose); err != nil {
-		return err
-	}
-	for _, group := range []struct {
-		name   string
-		values []string
-	}{
-		{name: "--setup", values: ctx.Setup},
-		{name: "--build", values: ctx.Build},
-		{name: "--lint", values: ctx.Lint},
-		{name: "--typecheck", values: ctx.Typecheck},
-		{name: "--test", values: ctx.Test},
-		{name: "--convention", values: ctx.Conventions},
-		{name: "--note", values: ctx.Notes},
-	} {
-		for _, value := range group.values {
-			if err := rejectReservedMarker(group.name, value); err != nil {
-				return err
-			}
-		}
-	}
-	for _, group := range []struct {
-		name    string
-		entries []Entry
-	}{
-		{name: "--map", entries: ctx.Structure},
-		{name: "--doc", entries: ctx.Docs},
-	} {
-		for _, entry := range group.entries {
-			if err := rejectReservedMarker(group.name, entry.Path); err != nil {
-				return err
-			}
-			if err := rejectReservedMarker(group.name, entry.Text); err != nil {
-				return err
-			}
+	if strings.TrimSpace(opts.ExpectedIndex) != "" {
+		current := strings.TrimSpace(block[indexRange.start+len(IndexStartMarker) : indexRange.end-len(IndexEndMarker)])
+		expected := strings.TrimSpace(opts.ExpectedIndex)
+		if current != expected {
+			return []Finding{errorFinding("stale-garden-index", "AGENTS.md Garden index is stale; run garden agents sync --apply")}
 		}
 	}
 	return nil
 }
 
-func validateIndexMemories(memories []IndexMemory) error {
-	for _, mem := range memories {
-		if err := rejectReservedMarker("memory id", mem.ID); err != nil {
+func (r *indexRow) add(value string) {
+	value = strings.TrimSpace(value)
+	if value == "" || r.seen[value] {
+		return
+	}
+	r.seen[value] = true
+	r.items = append(r.items, value)
+}
+
+func sortedCards(cards []IndexCard) []IndexCard {
+	sorted := append([]IndexCard(nil), cards...)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return sorted[i].Path < sorted[j].Path
+	})
+	return sorted
+}
+
+func validateIndexCards(cards []IndexCard) error {
+	for _, card := range cards {
+		if err := rejectReservedMarker("context card path", card.Path); err != nil {
 			return err
 		}
-		if err := rejectCompactIndexItemSyntax("memory id", mem.ID); err != nil {
+		if err := rejectCompactIndexItemSyntax("context card path", card.Path); err != nil {
 			return err
 		}
-		for _, scope := range mem.Scope {
-			if err := rejectReservedMarker("memory scope", scope); err != nil {
+		if err := rejectReservedMarker("context card kind", card.Kind); err != nil {
+			return err
+		}
+		if err := rejectCompactIndexItemSyntax("context card kind", card.Kind); err != nil {
+			return err
+		}
+		for _, scope := range card.Scope {
+			if err := rejectReservedMarker("context card scope", scope); err != nil {
 				return err
 			}
-			if err := rejectCompactIndexRowSyntax("memory scope", scope); err != nil {
+			if err := rejectCompactIndexRowSyntax("context card scope", scope); err != nil {
 				return err
 			}
 		}
-		for _, tag := range mem.Tags {
-			if err := rejectReservedMarker("memory tag", tag); err != nil {
+		for _, tag := range card.Tags {
+			if err := rejectReservedMarker("context card tag", tag); err != nil {
 				return err
 			}
-			if err := rejectCompactIndexItemSyntax("memory tag", tag); err != nil {
+			if err := rejectCompactIndexItemSyntax("context card tag", tag); err != nil {
 				return err
 			}
 		}
@@ -452,15 +259,6 @@ func rejectCompactIndexItemSyntax(field string, value string) error {
 	return nil
 }
 
-func sortedKeys(values map[string]bool) []string {
-	keys := make([]string, 0, len(values))
-	for key := range values {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
 func findSingleMarkerRange(doc string, startMarker string, endMarker string, label string) (markerRange, error) {
 	startCount := strings.Count(doc, startMarker)
 	endCount := strings.Count(doc, endMarker)
@@ -499,12 +297,15 @@ func ensureTrailingNewline(value string) string {
 }
 
 func syncIndexInBlock(block string, index string) (string, error) {
-	index = IndexStartMarker + "\n" + ensureTrailingNewline(index) + IndexEndMarker + "\n"
+	index = IndexStartMarker + "\n" + ensureTrailingNewline(index) + IndexEndMarker
 	rangeInfo, err := findSingleMarkerRange(block, IndexStartMarker, IndexEndMarker, "Garden index")
 	if err != nil {
 		return "", err
 	}
 	if rangeInfo.exists {
+		if !strings.HasPrefix(block[rangeInfo.end:], "\n") {
+			index += "\n"
+		}
 		return block[:rangeInfo.start] + index + block[rangeInfo.end:], nil
 	}
 
@@ -513,20 +314,20 @@ func syncIndexInBlock(block string, index string) (string, error) {
 		return "", fmt.Errorf("malformed Garden agents markers")
 	}
 	prefix := strings.TrimRight(block[:end], "\n") + "\n\n"
-	return prefix + index + block[end:], nil
+	return prefix + index + "\n" + block[end:], nil
 }
 
-func lineCount(value string) int {
-	if value == "" {
-		return 0
+func cleanStrings(values []string) []string {
+	cleaned := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			cleaned = append(cleaned, value)
+		}
 	}
-	count := strings.Count(value, "\n")
-	if !strings.HasSuffix(value, "\n") {
-		count++
-	}
-	return count
+	return cleaned
 }
 
-func warning(code string, message string) Finding {
-	return Finding{Severity: "warning", Code: code, Message: message}
+func errorFinding(code string, message string) Finding {
+	return Finding{Severity: "error", Code: code, Message: message}
 }

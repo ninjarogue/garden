@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	"github.com/aric/garden/internal/agents"
-	"github.com/aric/garden/internal/memory"
-	"github.com/aric/garden/internal/retrieval"
 )
 
 type AgentsChange struct {
@@ -17,90 +15,6 @@ type AgentsChange struct {
 	After    string
 	Applied  bool
 	Findings []agents.Finding
-}
-
-func WritePack(w io.Writer, path string, task string, results []retrieval.Result, explain bool) error {
-	if _, err := fmt.Fprintln(w, "<garden_context_pack>"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintln(w, "# Garden Context Pack"); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintln(w); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(w, "Path: `%s`\n", path); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(w, "Task: %s\n", task); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintln(w); err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintln(w, "## Relevant Memories"); err != nil {
-		return err
-	}
-	if len(results) == 0 {
-		if _, err := fmt.Fprintln(w, "No relevant memories."); err != nil {
-			return err
-		}
-	} else {
-		for _, result := range results {
-			if _, err := fmt.Fprintf(w, "- %s\n", oneLine(result.Memory.Memory)); err != nil {
-				return err
-			}
-		}
-	}
-	if explain && len(results) > 0 {
-		if _, err := fmt.Fprintln(w); err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintln(w, "## Why These Memories"); err != nil {
-			return err
-		}
-		for _, result := range results {
-			if _, err := fmt.Fprintf(w, "%s selected:\n", result.Memory.ID); err != nil {
-				return err
-			}
-			if len(result.Reasons) == 0 {
-				if _, err := fmt.Fprintf(w, "- retrieval score (%s)\n", formatPoints(result.Score)); err != nil {
-					return err
-				}
-				continue
-			}
-			for _, reason := range result.Reasons {
-				if _, err := fmt.Fprintf(w, "- %s (%s)\n", reason.Text, formatPoints(reason.Points)); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	_, err := fmt.Fprintln(w, "</garden_context_pack>")
-	return err
-}
-
-func WriteList(w io.Writer, memories []memory.Memory) error {
-	if len(memories) == 0 {
-		_, err := fmt.Fprintln(w, "No memories.")
-		return err
-	}
-	for _, mem := range memories {
-		parts := []string{fmt.Sprintf("%s [%s]", mem.ID, mem.Priority)}
-		if mem.Always {
-			parts = append(parts, "always")
-		}
-		if len(mem.Scope) > 0 {
-			parts = append(parts, "scope: "+strings.Join(mem.Scope, ", "))
-		}
-		if len(mem.Tags) > 0 {
-			parts = append(parts, "tags: "+strings.Join(mem.Tags, ", "))
-		}
-		if _, err := fmt.Fprintf(w, "%s\n  %s\n", strings.Join(parts, " | "), oneLine(mem.Memory)); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func WriteAgentsChange(w io.Writer, change AgentsChange, action string) error {
@@ -129,24 +43,13 @@ func WriteAgentsChange(w io.Writer, change AgentsChange, action string) error {
 	return err
 }
 
-func WriteAgentsLint(w io.Writer, findings []agents.Finding) (bool, error) {
+func WriteLint(w io.Writer, findings []agents.Finding) (bool, error) {
 	if len(findings) == 0 {
-		_, err := fmt.Fprintln(w, "AGENTS.md lint passed.")
+		_, err := fmt.Fprintln(w, "Garden lint passed.")
 		return false, err
 	}
 	_, err := writeFindings(w, findings)
 	return hasErrorFinding(findings), err
-}
-
-func oneLine(value string) string {
-	return strings.Join(strings.Fields(value), " ")
-}
-
-func formatPoints(points int) string {
-	if points > 0 {
-		return fmt.Sprintf("+%d", points)
-	}
-	return fmt.Sprintf("%d", points)
 }
 
 func writeFindings(w io.Writer, findings []agents.Finding) (int, error) {

@@ -1,60 +1,87 @@
 # Garden
 
-Garden is a local context and memory router for coding agents.
+Garden maintains a small `AGENTS.md` router for coding agents and stores detailed repo context in Markdown cards.
 
 Core model:
 
 ```txt
-.garden/ = source of truth
-garden pack = ranked context pack from matching stored memories
-agent uses pack = no giant AGENTS.md
+AGENTS.md = small always-visible router
+.garden/context/*.md = human-readable context cards
+garden = authoring, indexing, syncing, and linting tool
 ```
 
-The product question:
+Garden does not require agents to use a runtime context pack. Agents discover relevant cards from `AGENTS.md`, then read the Markdown card files with normal file tools.
 
-```txt
-What should the agent know right now?
-```
+## Commands
 
-## Direction
+Initialize context-card storage:
 
-Garden turns a growing pile of repo memory into a tiny task-specific context pack.
-
-Garden is most useful for what the codebase does not reliably say. High-signal memories include rationale, gotchas, sparse intended patterns, local exceptions, workflow constraints, and product intent. Users can store anything; the first version retrieves from `.garden/memories.json` using explicit metadata like scope, task text, tags, priority, and budget.
-
-Start local-first:
-
-```txt
+```sh
 garden init
-garden remember "Route files should not import DB clients directly; query modules enforce tenant scoping and audit logging." --scope "src/routes/**" --tag database
-garden pack --path src/routes/api/users.ts --task "add user endpoint"
 ```
 
-`garden remember` requires either `--scope` or `--always`. `--scope` and `--tag` can be repeated. `--always` means the memory can be considered for any path, not that it is forced into every pack.
+Create a context card:
 
-`garden pack` outputs structured Markdown for LLM context:
+```sh
+garden new routes-query-modules --kind rule --scope "src/routes/**" --tag database
+```
+
+Sync the generated Garden section in `AGENTS.md`:
+
+```sh
+garden agents sync --apply
+```
+
+Preview the same sync without writing:
+
+```sh
+garden agents sync
+```
+
+Validate context cards and the `AGENTS.md` index:
+
+```sh
+garden lint
+```
+
+Remove a context card:
+
+```sh
+garden remove routes-query-modules
+```
+
+Run `garden agents sync --apply` again after adding, editing, or removing cards.
+
+## Context Cards
+
+Cards live in `.garden/context/*.md` and use small YAML frontmatter:
 
 ```md
-<garden_context_pack>
-# Garden Context Pack
+---
+kind: rule
+scope:
+  - src/routes/**
+tags:
+  - database
+  - tenant-scoping
+---
 
-Path: `src/routes/api/users.ts`
-Task: add user endpoint
+# Routes Query Modules
 
-## Relevant Memories
-- Route files should not import DB clients directly; query modules enforce tenant scoping and audit logging.
-</garden_context_pack>
+Route files should use query modules for database access.
 ```
 
-## MVP Principles
+Required fields:
 
-- Manual memory entry first.
-- Flat-file storage first.
-- Deterministic retrieval first.
-- Prove the simplest useful loop: remember scoped memory, then retrieve relevant stored memories for this path/task.
-- No exports to existing agent systems yet.
-- No refinement workflow, indexing, JSON output/API mode, database, vector search, MCP, or SaaS dashboard in the first slice.
+- `kind`: one of `rule`, `exception`, `warning`, `workflow`, or `background`
+- `scope`: one or more repo-relative globs
 
-## Product Bet
+Optional fields:
 
-Your repo memory can grow without making every agent session dumber.
+- `tags`: compact labels for the generated `AGENTS.md` index
+
+## Verification
+
+```sh
+env GOCACHE=/tmp/garden-go-build go test ./...
+```

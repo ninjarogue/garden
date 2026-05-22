@@ -1,0 +1,298 @@
+package agents
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestRenderBlockRoutesAgentsToMarkdownContextCards(t *testing.T) {
+	block, err := RenderBlock([]IndexCard{{
+		Path:  ".garden/context/routes-query-modules.md",
+		Kind:  "rule",
+		Scope: []string{"src/routes/**"},
+		Tags:  []string{"database", "tenant-scoping"},
+	}})
+	if err != nil {
+		t.Fatalf("RenderBlock returned error: %v", err)
+	}
+
+	want := strings.Join([]string{
+		AgentsStartMarker,
+		"### Garden Context",
+		"",
+		"Detailed agent context lives in `.garden/context/*.md`.",
+		"",
+		"Before editing a listed area, inspect the matching context card.",
+		"",
+		"Index:",
+		IndexStartMarker,
+		"[Garden Context Index]|root:.garden/context",
+		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
+		"|src/routes/**:{rule,database,tenant-scoping,.garden/context/routes-query-modules.md}",
+		IndexEndMarker,
+		AgentsEndMarker,
+	}, "\n") + "\n"
+	if block != want {
+		t.Fatalf("block = %q, want %q", block, want)
+	}
+}
+
+func TestRenderIndexUsesBaseCompactSyntaxOnly(t *testing.T) {
+	index, err := RenderIndex([]IndexCard{
+		{
+			Path:  ".garden/context/context-card-format.md",
+			Kind:  "workflow",
+			Scope: []string{"internal/contextcard/**"},
+			Tags:  []string{"frontmatter"},
+		},
+		{
+			Path:  ".garden/context/routes-query-modules.md",
+			Kind:  "rule",
+			Scope: []string{"src/routes/**"},
+			Tags:  []string{"database", "tenant-scoping"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("RenderIndex returned error: %v", err)
+	}
+
+	want := strings.Join([]string{
+		"[Garden Context Index]|root:.garden/context",
+		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
+		"|internal/contextcard/**:{workflow,frontmatter,.garden/context/context-card-format.md}",
+		"|src/routes/**:{rule,database,tenant-scoping,.garden/context/routes-query-modules.md}",
+	}, "\n") + "\n"
+	if index != want {
+		t.Fatalf("index = %q, want %q", index, want)
+	}
+}
+
+func TestRenderIndexRejectsReservedGardenMarkersInCardInput(t *testing.T) {
+	tests := []struct {
+		name    string
+		card    IndexCard
+		wantErr string
+	}{
+		{
+			name:    "path",
+			card:    IndexCard{Path: ".garden/context/card.md" + AgentsStartMarker, Kind: "rule", Scope: []string{"src/**"}},
+			wantErr: "context card path contains reserved Garden marker",
+		},
+		{
+			name:    "kind",
+			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule" + AgentsEndMarker, Scope: []string{"src/**"}},
+			wantErr: "context card kind contains reserved Garden marker",
+		},
+		{
+			name:    "scope",
+			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**" + IndexStartMarker}},
+			wantErr: "context card scope contains reserved Garden marker",
+		},
+		{
+			name:    "tag",
+			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**"}, Tags: []string{"database" + IndexEndMarker}},
+			wantErr: "context card tag contains reserved Garden marker",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := RenderIndex([]IndexCard{tt.card})
+			assertErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestRenderIndexRejectsCompactIndexDelimitersInCardInput(t *testing.T) {
+	tests := []struct {
+		name    string
+		card    IndexCard
+		wantErr string
+	}{
+		{
+			name:    "path",
+			card:    IndexCard{Path: ".garden/context/card.md|bad", Kind: "rule", Scope: []string{"src/**"}},
+			wantErr: "context card path contains compact index syntax delimiter '|'",
+		},
+		{
+			name:    "kind",
+			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule,warning", Scope: []string{"src/**"}},
+			wantErr: "context card kind contains compact index syntax delimiter ','",
+		},
+		{
+			name:    "scope",
+			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**|bad"}},
+			wantErr: "context card scope contains compact index syntax delimiter '|'",
+		},
+		{
+			name:    "tag",
+			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**"}, Tags: []string{"database,tenant"}},
+			wantErr: "context card tag contains compact index syntax delimiter ','",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := RenderIndex([]IndexCard{tt.card})
+			assertErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestRenderIndexRejectsControlCharactersInCardInput(t *testing.T) {
+	tests := []struct {
+		name    string
+		card    IndexCard
+		wantErr string
+	}{
+		{
+			name:    "path",
+			card:    IndexCard{Path: ".garden/context/card.md\tbad", Kind: "rule", Scope: []string{"src/**"}},
+			wantErr: "context card path contains compact index syntax control character",
+		},
+		{
+			name:    "kind",
+			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule\tbad", Scope: []string{"src/**"}},
+			wantErr: "context card kind contains compact index syntax control character",
+		},
+		{
+			name:    "scope",
+			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**\nbad"}},
+			wantErr: "context card scope contains compact index syntax control character",
+		},
+		{
+			name:    "tag",
+			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**"}, Tags: []string{"database\ttenant"}},
+			wantErr: "context card tag contains compact index syntax control character",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := RenderIndex([]IndexCard{tt.card})
+			assertErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestSyncIndexPreservesHumanContentAndRefreshesContextIndex(t *testing.T) {
+	doc := strings.Join([]string{
+		"# Human Rules",
+		AgentsStartMarker,
+		"### Garden Context",
+		"Detailed agent context lives in `.garden/context/*.md`.",
+		IndexStartMarker,
+		"[Garden Context Index]|root:.garden/context",
+		"|old/**:{old,.garden/context/old.md}",
+		IndexEndMarker,
+		AgentsEndMarker,
+		"Keep trailing human content.",
+	}, "\n") + "\n"
+
+	got, err := SyncIndex(doc, []IndexCard{{
+		Path:  ".garden/context/routes-query-modules.md",
+		Kind:  "rule",
+		Scope: []string{"src/routes/**"},
+		Tags:  []string{"database"},
+	}})
+	if err != nil {
+		t.Fatalf("SyncIndex returned error: %v", err)
+	}
+
+	want := strings.Join([]string{
+		"# Human Rules",
+		AgentsStartMarker,
+		"### Garden Context",
+		"Detailed agent context lives in `.garden/context/*.md`.",
+		IndexStartMarker,
+		"[Garden Context Index]|root:.garden/context",
+		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
+		"|src/routes/**:{rule,database,.garden/context/routes-query-modules.md}",
+		IndexEndMarker,
+		AgentsEndMarker,
+		"Keep trailing human content.",
+	}, "\n") + "\n"
+	if got != want {
+		t.Fatalf("synced AGENTS.md = %q, want %q", got, want)
+	}
+}
+
+func TestLintReportsMissingGardenAgentsBlock(t *testing.T) {
+	findings := Lint("# Human Rules\n", LintOptions{})
+	assertFindings(t, findings, []Finding{{
+		Severity: "error",
+		Code:     "missing-garden-agents-block",
+		Message:  "Garden agents block is missing",
+	}})
+}
+
+func TestLintReportsMissingGardenIndex(t *testing.T) {
+	doc := AgentsStartMarker + "\n### Garden Context\n" + AgentsEndMarker + "\n"
+	findings := Lint(doc, LintOptions{})
+	assertFindings(t, findings, []Finding{{
+		Severity: "error",
+		Code:     "missing-garden-index",
+		Message:  "Garden context index is missing",
+	}})
+}
+
+func TestLintReportsMalformedGardenIndexMarkers(t *testing.T) {
+	doc := AgentsStartMarker + "\n" +
+		IndexStartMarker + "\n" +
+		IndexStartMarker + "\n" +
+		IndexEndMarker + "\n" +
+		AgentsEndMarker + "\n"
+	findings := Lint(doc, LintOptions{})
+	assertFindings(t, findings, []Finding{{
+		Severity: "error",
+		Code:     "garden-index-markers",
+		Message:  "malformed Garden index markers",
+	}})
+}
+
+func TestLintReportsStaleGardenIndex(t *testing.T) {
+	expected, err := RenderIndex([]IndexCard{{
+		Path:  ".garden/context/routes-query-modules.md",
+		Kind:  "rule",
+		Scope: []string{"src/routes/**"},
+		Tags:  []string{"database"},
+	}})
+	if err != nil {
+		t.Fatalf("RenderIndex returned error: %v", err)
+	}
+	doc := AgentsStartMarker + "\n### Garden Context\n" +
+		IndexStartMarker + "\n" +
+		"[Garden Context Index]|root:.garden/context\n" +
+		"|old/**:{old,.garden/context/old.md}\n" +
+		IndexEndMarker + "\n" +
+		AgentsEndMarker + "\n"
+
+	findings := Lint(doc, LintOptions{ExpectedIndex: expected})
+	assertFindings(t, findings, []Finding{{
+		Severity: "error",
+		Code:     "stale-garden-index",
+		Message:  "AGENTS.md Garden index is stale; run garden agents sync --apply",
+	}})
+}
+
+func assertErrorContains(t *testing.T, err error, want string) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("error = %q, want %q", err.Error(), want)
+	}
+}
+
+func assertFindings(t *testing.T, got []Finding, want []Finding) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("findings = %#v, want %#v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("findings[%d] = %#v, want %#v; all findings = %#v", i, got[i], want[i], got)
+		}
+	}
+}

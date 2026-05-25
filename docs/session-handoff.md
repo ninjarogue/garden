@@ -1,6 +1,6 @@
 # Session Handoff
 
-## 2026-05-25 09:19 CST
+## 2026-05-25 09:57 CST
 
 ### Current State
 
@@ -8,18 +8,26 @@ Branch: `master`
 
 Working tree was clean before this handoff update. The branch is ahead of `origin/master`.
 
-Recent commits:
+Recent commits before this update:
 
+- `138ee80 docs: update handoff notes`
+- `3a8ad67 docs: add property-based testing findings`
+- `fba97f5 test: add property-based coverage`
 - `11ba866 docs: update session log`
-- `1c42150 ref: decouple app layer types`
 
-Latest verification for the refactor:
+Latest verification after adding PBT tests:
 
 ```sh
 env GOCACHE=/tmp/garden-go-build go test ./...
 ```
 
 Result: all packages passed.
+
+PBT work is committed:
+
+- Real property tests were added for `RenderIndex` ordering and context-card template/parse round trips.
+- Findings for a future PBT skill live in `docs/property-based-testing-findings.md`.
+- Next PBT targets live in `docs/pbt-next-targets-handoff.md`.
 
 ### Product Direction
 

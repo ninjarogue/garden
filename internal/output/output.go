@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/aric/garden/internal/agents"
+	"github.com/aric/garden/internal/contextcard"
 )
 
 type AgentsChange struct {
@@ -50,6 +51,34 @@ func WriteLint(w io.Writer, findings []agents.Finding) (bool, error) {
 	}
 	_, err := writeFindings(w, findings)
 	return hasErrorFinding(findings), err
+}
+
+func WriteCards(w io.Writer, cards []contextcard.Card) error {
+	if len(cards) == 0 {
+		_, err := fmt.Fprintln(w, "No context cards found.")
+		return err
+	}
+	for _, card := range cards {
+		if _, err := fmt.Fprintf(w, "%s\n", card.Path); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(w, "  kind: %s\n", card.Kind); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(w, "  scope: %s\n", strings.Join(card.Scope, ", ")); err != nil {
+			return err
+		}
+		if len(card.Tags) > 0 {
+			if _, err := fmt.Fprintf(w, "  tags: %s\n", strings.Join(card.Tags, ", ")); err != nil {
+				return err
+			}
+		} else {
+			if _, err := fmt.Fprintln(w, "  tags: -"); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func writeFindings(w io.Writer, findings []agents.Finding) (int, error) {

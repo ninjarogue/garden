@@ -68,6 +68,60 @@ Write the repo context here.
 	}
 }
 
+func TestListCommandShowsContextCards(t *testing.T) {
+	rootDir := t.TempDir()
+	garden := app.New(app.Options{Root: rootDir})
+	writeCard(t, rootDir, "global-background", `---
+kind: background
+scope:
+  - '**/*'
+---
+
+General project context.
+`)
+	writeCard(t, rootDir, "routes-query-modules", `---
+kind: rule
+scope:
+  - src/routes/**
+tags:
+  - database
+  - tenant-scoping
+---
+
+Use query modules.
+`)
+
+	out, _, err := execute(garden, "list")
+	if err != nil {
+		t.Fatalf("list returned error: %v", err)
+	}
+	wantOut := `.garden/context/global-background.md
+  kind: background
+  scope: **/*
+  tags: -
+.garden/context/routes-query-modules.md
+  kind: rule
+  scope: src/routes/**
+  tags: database, tenant-scoping
+`
+	if out != wantOut {
+		t.Fatalf("stdout = %q, want %q", out, wantOut)
+	}
+}
+
+func TestListCommandShowsEmptyMessage(t *testing.T) {
+	rootDir := t.TempDir()
+	garden := app.New(app.Options{Root: rootDir})
+
+	out, _, err := execute(garden, "list")
+	if err != nil {
+		t.Fatalf("list returned error: %v", err)
+	}
+	if out != "No context cards found.\n" {
+		t.Fatalf("stdout = %q", out)
+	}
+}
+
 func TestAgentsSyncCommandAppliesContextIndex(t *testing.T) {
 	rootDir := t.TempDir()
 	garden := app.New(app.Options{Root: rootDir})

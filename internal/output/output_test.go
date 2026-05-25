@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/aric/garden/internal/agents"
+	"github.com/aric/garden/internal/contextcard"
 )
 
 func TestWriteAgentsChangePreviewWritesDiffAndPreviewMessage(t *testing.T) {
@@ -98,5 +99,38 @@ func TestWriteLintFindingsWritesFindingsAndFailsOnErrors(t *testing.T) {
 	want := "warning line-budget: too long\nerror stale-garden-index: stale\n"
 	if buf.String() != want {
 		t.Fatalf("output = %q, want %q", buf.String(), want)
+	}
+}
+
+func TestWriteCardsWritesCardMetadata(t *testing.T) {
+	var buf bytes.Buffer
+	err := WriteCards(&buf, []contextcard.Card{{
+		Path:  ".garden/context/routes-query-modules.md",
+		Kind:  contextcard.KindRule,
+		Scope: []string{"src/routes/**", "src/db/**"},
+		Tags:  []string{"database", "tenant-scoping"},
+	}})
+	if err != nil {
+		t.Fatalf("WriteCards returned error: %v", err)
+	}
+
+	want := `.garden/context/routes-query-modules.md
+  kind: rule
+  scope: src/routes/**, src/db/**
+  tags: database, tenant-scoping
+`
+	if buf.String() != want {
+		t.Fatalf("output = %q, want %q", buf.String(), want)
+	}
+}
+
+func TestWriteCardsWritesEmptyMessage(t *testing.T) {
+	var buf bytes.Buffer
+	if err := WriteCards(&buf, nil); err != nil {
+		t.Fatalf("WriteCards returned error: %v", err)
+	}
+
+	if buf.String() != "No context cards found.\n" {
+		t.Fatalf("output = %q", buf.String())
 	}
 }

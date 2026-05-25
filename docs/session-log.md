@@ -132,3 +132,36 @@
 
 ### Tags
 #codex #session-log #tests #garden
+
+## 2026-05-25 09:09 CST
+
+### Context
+- Follow-up app-layer refactor session.
+- User requested TDD and Karpathy-guidelines for a behavior-preserving app-layer refactor.
+
+### Executive Summary
+- Decoupled `internal/app` so command/output code talks to app-owned use-case types.
+- Committed the refactor as `1c42150 ref: decouple app layer types`.
+
+### Findings
+- `internal/app` previously exposed lower-level `contextcard.Card` and `agents.Finding` types.
+- `internal/output` also depended directly on `agents.Finding`.
+- App filesystem access for `AGENTS.md` was embedded in app methods, which made isolated app tests harder.
+
+### Progress Completed
+- Added app-owned `Card`, `Finding`, `CreateCardInput`, `FileError`, `CardStore`, and `AgentsFile` types.
+- Added adapters for `contextcard.Store` and local `AGENTS.md` file access.
+- Updated `cmd` and `output` to consume `app.AgentsChange` and `app.Finding`.
+- Added focused tests for injected card storage, injected `AGENTS.md` access, and app-owned findings.
+- Verified with `env GOCACHE=/tmp/garden-go-build go test ./...`.
+
+### Open Blockers/Risks
+- Branch is ahead of `origin/master` by one commit.
+- `docs/session-handoff.md` should be disregarded until the next product slice is clarified.
+
+### Next Steps
+- Review product docs and decide the next Garden product slice before adding more surface area.
+- Push committed refactor work when ready.
+
+### Tags
+#codex #session-log #refactor #garden

@@ -15,7 +15,8 @@ env GOCACHE=/tmp/garden-go-build go test ./...
 - Keep command tests focused on one CLI behavior: `init`, `new`, `agents sync`, `lint`, or `remove`.
 - Keep output tests focused on one formatting contract: preview diff, findings, applied/no-change, lint pass, or lint findings.
 - Use temp directories and real file reads/writes for app, command, and context-card behavior.
-- Use exact equality for stable generated strings such as AGENTS blocks, compact indexes, card templates, and CLI output.
+- Use exact equality for stable generated strings in the package that owns them, such as AGENTS blocks, compact indexes, card templates, and output formatting.
+- In command tests, assert command UX and side effects without duplicating full generated payloads already covered by lower package tests.
 - Use substring assertions only for intentionally flexible error messages or defensive checks.
 - Add parser/store tests before changing context-card validation.
 - Add AGENTS render/lint tests before changing compact index syntax or marker behavior.

@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/aric/garden/internal/agents"
-	"github.com/aric/garden/internal/contextcard"
+	"github.com/aric/garden/internal/app"
 )
 
 func TestWriteAgentsChangePreviewWritesDiffAndPreviewMessage(t *testing.T) {
 	var buf bytes.Buffer
-	if err := WriteAgentsChange(&buf, AgentsChange{
+	if err := WriteAgentsChange(&buf, app.AgentsChange{
 		Path:    "AGENTS.md",
 		Before:  "old\n",
 		After:   "new\n",
@@ -27,12 +26,12 @@ func TestWriteAgentsChangePreviewWritesDiffAndPreviewMessage(t *testing.T) {
 
 func TestWriteAgentsChangePreviewIncludesLintFindings(t *testing.T) {
 	var buf bytes.Buffer
-	if err := WriteAgentsChange(&buf, AgentsChange{
+	if err := WriteAgentsChange(&buf, app.AgentsChange{
 		Path:    "AGENTS.md",
 		Before:  "old\n",
 		After:   "new\n",
 		Applied: false,
-		Findings: []agents.Finding{{
+		Findings: []app.Finding{{
 			Severity: "error",
 			Code:     "stale-garden-index",
 			Message:  "AGENTS.md Garden index is stale",
@@ -52,7 +51,7 @@ func TestWriteAgentsChangePreviewIncludesLintFindings(t *testing.T) {
 
 func TestWriteAgentsChangeAppliedWritesNoChangesAndAppliedMessage(t *testing.T) {
 	var buf bytes.Buffer
-	if err := WriteAgentsChange(&buf, AgentsChange{
+	if err := WriteAgentsChange(&buf, app.AgentsChange{
 		Path:    "AGENTS.md",
 		Before:  "same\n",
 		After:   "same\n",
@@ -85,7 +84,7 @@ func TestWriteLintPassWritesPassedMessage(t *testing.T) {
 
 func TestWriteLintFindingsWritesFindingsAndFailsOnErrors(t *testing.T) {
 	var buf bytes.Buffer
-	failed, err := WriteLint(&buf, []agents.Finding{
+	failed, err := WriteLint(&buf, []app.Finding{
 		{Severity: "warning", Code: "line-budget", Message: "too long"},
 		{Severity: "error", Code: "stale-garden-index", Message: "stale"},
 	})

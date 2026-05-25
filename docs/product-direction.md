@@ -47,7 +47,6 @@ Each card should be readable without Garden:
 
 ```md
 ---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -77,9 +76,9 @@ Before editing a listed area, inspect the matching context card.
 Index:
 [Garden Context Index]|root:.garden/context
 |IMPORTANT:Before editing a listed area, inspect the matching context card
-|src/routes/**:{rule,database,tenant-scoping,.garden/context/routes-query-modules.md}
-|internal/contextcard/**:{workflow,frontmatter,.garden/context/context-card-format.md}
-|**/*:{background,product,.garden/context/product-direction.md}
+|src/routes/**:.garden/context/routes-query-modules.md
+|internal/contextcard/**:.garden/context/context-card-format.md
+|**/*:.garden/context/product-direction.md
 ```
 
 The agent sees that Garden exists, which files have guidance, and which card to open. The agent then uses ordinary file-reading tools to inspect the card only when needed.
@@ -109,14 +108,13 @@ garden lint
 Example:
 
 ```txt
-garden new routes-query-modules --kind rule --scope "src/routes/**" --tag database
+garden new routes-query-modules --scope "src/routes/**" --tag database
 ```
 
 Generated card:
 
 ```md
 ---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -141,12 +139,11 @@ Editing should happen directly in the Markdown card. Humans can use their editor
 The required card metadata should stay small:
 
 ```yaml
-kind: rule
 scope:
   - src/routes/**
 ```
 
-Optional tags can provide compact labels for the `AGENTS.md` index:
+Optional tags can provide labels for human organization:
 
 ```yaml
 tags:
@@ -165,7 +162,6 @@ tags:
 Initial checks:
 
 - Each `.garden/context/*.md` file has YAML frontmatter.
-- `kind` exists and is one of `rule`, `exception`, `warning`, `workflow`, or `background`.
 - `scope` exists and has at least one non-empty glob.
 - `scope` does not contain `CHANGE_ME`.
 - `tags`, if present, is a list.

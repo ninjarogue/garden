@@ -16,9 +16,7 @@ const (
 
 type IndexCard struct {
 	Path  string
-	Kind  string
 	Scope []string
-	Tags  []string
 }
 
 type LintOptions struct {
@@ -29,11 +27,6 @@ type Finding struct {
 	Severity string
 	Code     string
 	Message  string
-}
-
-type indexRow struct {
-	items []string
-	seen  map[string]bool
 }
 
 type markerRange struct {
@@ -71,40 +64,35 @@ func RenderIndex(cards []IndexCard) (string, error) {
 	}
 
 	cards = sortedCards(cards)
-	rows := map[string]*indexRow{}
+	type row struct {
+		scope string
+		path  string
+	}
+	rows := []row{}
 	for _, card := range cards {
 		for _, scope := range cleanStrings(card.Scope) {
-			row := rows[scope]
-			if row == nil {
-				row = &indexRow{seen: map[string]bool{}}
-				rows[scope] = row
-			}
-			row.add(strings.TrimSpace(card.Kind))
-			for _, tag := range cleanStrings(card.Tags) {
-				row.add(tag)
-			}
-			row.add(strings.TrimSpace(card.Path))
+			rows = append(rows, row{scope: scope, path: strings.TrimSpace(card.Path)})
 		}
 	}
-
-	scopes := make([]string, 0, len(rows))
-	for scope := range rows {
-		scopes = append(scopes, scope)
-	}
-	sort.Strings(scopes)
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].scope == rows[j].scope {
+			return rows[i].path < rows[j].path
+		}
+		return rows[i].scope < rows[j].scope
+	})
 
 	var b strings.Builder
 	b.WriteString("[Garden Context Index]|root:.garden/context\n")
 	b.WriteString("|IMPORTANT:Before editing a listed area, inspect the matching context card\n")
-	for _, scope := range scopes {
-		if len(rows[scope].items) == 0 {
+	for _, row := range rows {
+		if row.path == "" {
 			continue
 		}
 		b.WriteString("|")
-		b.WriteString(scope)
-		b.WriteString(":{")
-		b.WriteString(strings.Join(rows[scope].items, ","))
-		b.WriteString("}\n")
+		b.WriteString(row.scope)
+		b.WriteString(":")
+		b.WriteString(row.path)
+		b.WriteString("\n")
 	}
 	return b.String(), nil
 }
@@ -173,15 +161,6 @@ func Lint(doc string, opts LintOptions) []Finding {
 	return nil
 }
 
-func (r *indexRow) add(value string) {
-	value = strings.TrimSpace(value)
-	if value == "" || r.seen[value] {
-		return
-	}
-	r.seen[value] = true
-	r.items = append(r.items, value)
-}
-
 func sortedCards(cards []IndexCard) []IndexCard {
 	sorted := append([]IndexCard(nil), cards...)
 	sort.SliceStable(sorted, func(i, j int) bool {
@@ -198,25 +177,11 @@ func validateIndexCards(cards []IndexCard) error {
 		if err := rejectCompactIndexItemSyntax("context card path", card.Path); err != nil {
 			return err
 		}
-		if err := rejectReservedMarker("context card kind", card.Kind); err != nil {
-			return err
-		}
-		if err := rejectCompactIndexItemSyntax("context card kind", card.Kind); err != nil {
-			return err
-		}
 		for _, scope := range card.Scope {
 			if err := rejectReservedMarker("context card scope", scope); err != nil {
 				return err
 			}
 			if err := rejectCompactIndexRowSyntax("context card scope", scope); err != nil {
-				return err
-			}
-		}
-		for _, tag := range card.Tags {
-			if err := rejectReservedMarker("context card tag", tag); err != nil {
-				return err
-			}
-			if err := rejectCompactIndexItemSyntax("context card tag", tag); err != nil {
 				return err
 			}
 		}

@@ -1,16 +1,28 @@
 package agents
 
 import (
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
 
+func TestIndexCardOnlyExposesRoutingMetadata(t *testing.T) {
+	cardType := reflect.TypeOf(IndexCard{})
+	fields := make([]string, 0, cardType.NumField())
+	for i := 0; i < cardType.NumField(); i++ {
+		fields = append(fields, cardType.Field(i).Name)
+	}
+
+	if want := []string{"Path", "Scope"}; !slices.Equal(fields, want) {
+		t.Fatalf("IndexCard fields = %#v, want %#v", fields, want)
+	}
+}
+
 func TestRenderBlockRoutesAgentsToMarkdownContextCards(t *testing.T) {
 	block, err := RenderBlock([]IndexCard{{
 		Path:  ".garden/context/routes-query-modules.md",
-		Kind:  "rule",
 		Scope: []string{"src/routes/**"},
-		Tags:  []string{"database", "tenant-scoping"},
 	}})
 	if err != nil {
 		t.Fatalf("RenderBlock returned error: %v", err)
@@ -28,7 +40,7 @@ func TestRenderBlockRoutesAgentsToMarkdownContextCards(t *testing.T) {
 		IndexStartMarker,
 		"[Garden Context Index]|root:.garden/context",
 		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
-		"|src/routes/**:{rule,database,tenant-scoping,.garden/context/routes-query-modules.md}",
+		"|src/routes/**:.garden/context/routes-query-modules.md",
 		IndexEndMarker,
 		AgentsEndMarker,
 	}, "\n") + "\n"
@@ -41,15 +53,11 @@ func TestRenderIndexUsesBaseCompactSyntaxOnly(t *testing.T) {
 	index, err := RenderIndex([]IndexCard{
 		{
 			Path:  ".garden/context/context-card-format.md",
-			Kind:  "workflow",
 			Scope: []string{"internal/contextcard/**"},
-			Tags:  []string{"frontmatter"},
 		},
 		{
 			Path:  ".garden/context/routes-query-modules.md",
-			Kind:  "rule",
 			Scope: []string{"src/routes/**"},
-			Tags:  []string{"database", "tenant-scoping"},
 		},
 	})
 	if err != nil {
@@ -59,8 +67,8 @@ func TestRenderIndexUsesBaseCompactSyntaxOnly(t *testing.T) {
 	want := strings.Join([]string{
 		"[Garden Context Index]|root:.garden/context",
 		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
-		"|internal/contextcard/**:{workflow,frontmatter,.garden/context/context-card-format.md}",
-		"|src/routes/**:{rule,database,tenant-scoping,.garden/context/routes-query-modules.md}",
+		"|internal/contextcard/**:.garden/context/context-card-format.md",
+		"|src/routes/**:.garden/context/routes-query-modules.md",
 	}, "\n") + "\n"
 	if index != want {
 		t.Fatalf("index = %q, want %q", index, want)
@@ -75,23 +83,13 @@ func TestRenderIndexRejectsReservedGardenMarkersInCardInput(t *testing.T) {
 	}{
 		{
 			name:    "path",
-			card:    IndexCard{Path: ".garden/context/card.md" + AgentsStartMarker, Kind: "rule", Scope: []string{"src/**"}},
+			card:    IndexCard{Path: ".garden/context/card.md" + AgentsStartMarker, Scope: []string{"src/**"}},
 			wantErr: "context card path contains reserved Garden marker",
 		},
 		{
-			name:    "kind",
-			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule" + AgentsEndMarker, Scope: []string{"src/**"}},
-			wantErr: "context card kind contains reserved Garden marker",
-		},
-		{
 			name:    "scope",
-			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**" + IndexStartMarker}},
+			card:    IndexCard{Path: ".garden/context/card.md", Scope: []string{"src/**" + IndexStartMarker}},
 			wantErr: "context card scope contains reserved Garden marker",
-		},
-		{
-			name:    "tag",
-			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**"}, Tags: []string{"database" + IndexEndMarker}},
-			wantErr: "context card tag contains reserved Garden marker",
 		},
 	}
 
@@ -111,23 +109,13 @@ func TestRenderIndexRejectsCompactIndexDelimitersInCardInput(t *testing.T) {
 	}{
 		{
 			name:    "path",
-			card:    IndexCard{Path: ".garden/context/card.md|bad", Kind: "rule", Scope: []string{"src/**"}},
+			card:    IndexCard{Path: ".garden/context/card.md|bad", Scope: []string{"src/**"}},
 			wantErr: "context card path contains compact index syntax delimiter '|'",
 		},
 		{
-			name:    "kind",
-			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule,warning", Scope: []string{"src/**"}},
-			wantErr: "context card kind contains compact index syntax delimiter ','",
-		},
-		{
 			name:    "scope",
-			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**|bad"}},
+			card:    IndexCard{Path: ".garden/context/card.md", Scope: []string{"src/**|bad"}},
 			wantErr: "context card scope contains compact index syntax delimiter '|'",
-		},
-		{
-			name:    "tag",
-			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**"}, Tags: []string{"database,tenant"}},
-			wantErr: "context card tag contains compact index syntax delimiter ','",
 		},
 	}
 
@@ -147,23 +135,13 @@ func TestRenderIndexRejectsControlCharactersInCardInput(t *testing.T) {
 	}{
 		{
 			name:    "path",
-			card:    IndexCard{Path: ".garden/context/card.md\tbad", Kind: "rule", Scope: []string{"src/**"}},
+			card:    IndexCard{Path: ".garden/context/card.md\tbad", Scope: []string{"src/**"}},
 			wantErr: "context card path contains compact index syntax control character",
 		},
 		{
-			name:    "kind",
-			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule\tbad", Scope: []string{"src/**"}},
-			wantErr: "context card kind contains compact index syntax control character",
-		},
-		{
 			name:    "scope",
-			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**\nbad"}},
+			card:    IndexCard{Path: ".garden/context/card.md", Scope: []string{"src/**\nbad"}},
 			wantErr: "context card scope contains compact index syntax control character",
-		},
-		{
-			name:    "tag",
-			card:    IndexCard{Path: ".garden/context/card.md", Kind: "rule", Scope: []string{"src/**"}, Tags: []string{"database\ttenant"}},
-			wantErr: "context card tag contains compact index syntax control character",
 		},
 	}
 
@@ -191,9 +169,7 @@ func TestSyncIndexPreservesHumanContentAndRefreshesContextIndex(t *testing.T) {
 
 	got, err := SyncIndex(doc, []IndexCard{{
 		Path:  ".garden/context/routes-query-modules.md",
-		Kind:  "rule",
 		Scope: []string{"src/routes/**"},
-		Tags:  []string{"database"},
 	}})
 	if err != nil {
 		t.Fatalf("SyncIndex returned error: %v", err)
@@ -207,7 +183,7 @@ func TestSyncIndexPreservesHumanContentAndRefreshesContextIndex(t *testing.T) {
 		IndexStartMarker,
 		"[Garden Context Index]|root:.garden/context",
 		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
-		"|src/routes/**:{rule,database,.garden/context/routes-query-modules.md}",
+		"|src/routes/**:.garden/context/routes-query-modules.md",
 		IndexEndMarker,
 		AgentsEndMarker,
 		"Keep trailing human content.",
@@ -253,9 +229,7 @@ func TestLintReportsMalformedGardenIndexMarkers(t *testing.T) {
 func TestLintReportsStaleGardenIndex(t *testing.T) {
 	expected, err := RenderIndex([]IndexCard{{
 		Path:  ".garden/context/routes-query-modules.md",
-		Kind:  "rule",
 		Scope: []string{"src/routes/**"},
-		Tags:  []string{"database"},
 	}})
 	if err != nil {
 		t.Fatalf("RenderIndex returned error: %v", err)

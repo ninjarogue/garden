@@ -14,7 +14,7 @@
 
 ### Findings
 - `.gitignore` ignored both `docs/` and `.garden/`; `docs/` is now trackable, and `.garden/context/*.md` is allowed.
-- Compact AGENTS index should stay base Vercel-style syntax; no custom `kind:`, `tags:`, or `card:` fields.
+- Compact AGENTS index should stay base Vercel-style syntax; no custom row-level fields.
 - Legacy memory/retrieval/storage packages remain present but are no longer wired into app/CLI.
 
 ### Progress Completed

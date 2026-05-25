@@ -23,7 +23,7 @@ garden init
 Create a context card:
 
 ```sh
-garden new routes-query-modules --kind rule --scope "src/routes/**" --tag database
+garden new routes-query-modules --scope "src/routes/**" --tag database
 ```
 
 List context cards:
@@ -64,7 +64,6 @@ Cards live in `.garden/context/*.md` and use small YAML frontmatter:
 
 ```md
 ---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -79,12 +78,11 @@ Route files should use query modules for database access.
 
 Required fields:
 
-- `kind`: one of `rule`, `exception`, `warning`, `workflow`, or `background`
 - `scope`: one or more repo-relative globs
 
 Optional fields:
 
-- `tags`: compact labels for the generated `AGENTS.md` index
+- `tags`: labels for human organization
 
 ## Verification
 

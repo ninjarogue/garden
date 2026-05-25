@@ -7,8 +7,62 @@ import (
 	"testing"
 
 	"github.com/aric/garden/internal/agents"
-	"github.com/aric/garden/internal/contextcard"
 )
+
+func TestAgentsSyncUsesInjectedStoreAndAgentsFile(t *testing.T) {
+	store := &stubCardStore{
+		loadAllCards: []Card{{
+			Slug:  "routes-query-modules",
+			Path:  ".garden/context/routes-query-modules.md",
+			Scope: []string{"src/routes/**"},
+			Tags:  []string{"database"},
+			Body:  "Use query modules.",
+		}},
+	}
+	agentsFile := &stubAgentsFile{path: "/repo/AGENTS.md"}
+	garden := &App{cards: store, agentsFile: agentsFile}
+
+	change, err := garden.AgentsSync(AgentsSyncInput{Apply: true})
+	if err != nil {
+		t.Fatalf("AgentsSync returned error: %v", err)
+	}
+	if !change.Applied {
+		t.Fatal("expected sync to apply through injected agents file")
+	}
+	if agentsFile.written == "" {
+		t.Fatal("expected AgentsSync to write rendered AGENTS.md")
+	}
+	if change.Path != "/repo/AGENTS.md" {
+		t.Fatalf("change path = %q, want injected agents file path", change.Path)
+	}
+	if store.loadAllCalls != 1 {
+		t.Fatalf("LoadAll calls = %d, want 1", store.loadAllCalls)
+	}
+}
+
+func TestLintReturnsAppOwnedFindingsFromInjectedStore(t *testing.T) {
+	store := &stubCardStore{
+		readAllFileErrors: []FileError{{
+			Path: ".garden/context/broken-card.md",
+			Err:  errString("scope must be a list"),
+		}},
+	}
+	block, err := agents.RenderBlock(nil)
+	if err != nil {
+		t.Fatalf("RenderBlock returned error: %v", err)
+	}
+	garden := &App{cards: store, agentsFile: &stubAgentsFile{content: block}}
+
+	findings, err := garden.Lint()
+	if err != nil {
+		t.Fatalf("Lint returned error: %v", err)
+	}
+	assertAppFindings(t, findings, []Finding{{
+		Severity: "error",
+		Code:     "invalid-context-card",
+		Message:  ".garden/context/broken-card.md: scope must be a list",
+	}})
+}
 
 func TestNewCardCreatesMarkdownCard(t *testing.T) {
 	root := t.TempDir()
@@ -19,7 +73,6 @@ func TestNewCardCreatesMarkdownCard(t *testing.T) {
 
 	card, err := garden.NewCard(NewCardInput{
 		Slug:  "routes-query-modules",
-		Kind:  contextcard.KindRule,
 		Scope: []string{"src/routes/**"},
 		Tags:  []string{"database"},
 	})
@@ -35,7 +88,6 @@ func TestNewCardCreatesMarkdownCard(t *testing.T) {
 		t.Fatalf("read card: %v", err)
 	}
 	wantCard := `---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -58,7 +110,6 @@ func TestAgentsSyncPreviewFromContextCards(t *testing.T) {
 		t.Fatalf("Init returned error: %v", err)
 	}
 	writeCard(t, root, "routes-query-modules", `---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -93,7 +144,7 @@ Use query modules.
 		agents.IndexStartMarker,
 		"[Garden Context Index]|root:.garden/context",
 		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
-		"|src/routes/**:{rule,database,.garden/context/routes-query-modules.md}",
+		"|src/routes/**:.garden/context/routes-query-modules.md",
 		agents.IndexEndMarker,
 		agents.AgentsEndMarker,
 	}, "\n") + "\n"
@@ -115,7 +166,6 @@ func TestAgentsSyncApplyWritesAGENTS(t *testing.T) {
 		t.Fatalf("Init returned error: %v", err)
 	}
 	writeCard(t, root, "routes-query-modules", `---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -150,7 +200,6 @@ func TestLintReportsStaleAgentsIndex(t *testing.T) {
 		t.Fatalf("Init returned error: %v", err)
 	}
 	writeCard(t, root, "routes-query-modules", `---
-kind: rule
 scope:
   - src/routes/**
 ---
@@ -171,7 +220,7 @@ Use query modules.
 	if err != nil {
 		t.Fatalf("Lint returned error: %v", err)
 	}
-	assertAppFindings(t, findings, []agents.Finding{{
+	assertAppFindings(t, findings, []Finding{{
 		Severity: "error",
 		Code:     "stale-garden-index",
 		Message:  "AGENTS.md Garden index is stale; run garden agents sync --apply",
@@ -185,9 +234,7 @@ func TestLintReportsInvalidContextCard(t *testing.T) {
 		t.Fatalf("Init returned error: %v", err)
 	}
 	writeCard(t, root, "broken-card", `---
-kind: urgent
-scope:
-  - src/routes/**
+scope: src/routes/**
 ---
 
 Use query modules.
@@ -204,10 +251,10 @@ Use query modules.
 	if err != nil {
 		t.Fatalf("Lint returned error: %v", err)
 	}
-	assertAppFindings(t, findings, []agents.Finding{{
+	assertAppFindings(t, findings, []Finding{{
 		Severity: "error",
 		Code:     "invalid-context-card",
-		Message:  ".garden/context/broken-card.md: invalid kind \"urgent\"; expected rule, exception, warning, workflow, or background",
+		Message:  ".garden/context/broken-card.md: scope must be a list",
 	}})
 }
 
@@ -240,7 +287,7 @@ func writeCard(t *testing.T, root string, slug string, content string) {
 	}
 }
 
-func assertAppFindings(t *testing.T, got []agents.Finding, want []agents.Finding) {
+func assertAppFindings(t *testing.T, got []Finding, want []Finding) {
 	t.Helper()
 	if len(got) != len(want) {
 		t.Fatalf("findings = %#v, want %#v", got, want)
@@ -250,6 +297,60 @@ func assertAppFindings(t *testing.T, got []agents.Finding, want []agents.Finding
 			t.Fatalf("findings[%d] = %#v, want %#v; all findings = %#v", i, got[i], want[i], got)
 		}
 	}
+}
+
+type stubCardStore struct {
+	loadAllCards      []Card
+	loadAllCalls      int
+	readAllCards      []Card
+	readAllFileErrors []FileError
+}
+
+func (s *stubCardStore) Init() error {
+	return nil
+}
+
+func (s *stubCardStore) Create(input CreateCardInput) (Card, error) {
+	return Card{Slug: input.Slug, Scope: input.Scope, Tags: input.Tags}, nil
+}
+
+func (s *stubCardStore) Remove(slug string) (string, error) {
+	return ".garden/context/" + slug + ".md", nil
+}
+
+func (s *stubCardStore) LoadAll() ([]Card, error) {
+	s.loadAllCalls++
+	return s.loadAllCards, nil
+}
+
+func (s *stubCardStore) ReadAll() ([]Card, []FileError, error) {
+	return s.readAllCards, s.readAllFileErrors, nil
+}
+
+type stubAgentsFile struct {
+	content string
+	path    string
+	written string
+}
+
+func (f *stubAgentsFile) Read() (string, error) {
+	return f.content, nil
+}
+
+func (f *stubAgentsFile) Write(content string) error {
+	f.written = content
+	f.content = content
+	return nil
+}
+
+func (f *stubAgentsFile) Path() string {
+	return f.path
+}
+
+type errString string
+
+func (e errString) Error() string {
+	return string(e)
 }
 
 func assertRawAgentsContent(t *testing.T, content string) {

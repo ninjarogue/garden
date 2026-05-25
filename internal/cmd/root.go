@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aric/garden/internal/app"
-	"github.com/aric/garden/internal/contextcard"
 	"github.com/aric/garden/internal/output"
 )
 
@@ -62,7 +61,6 @@ func newInitCommand(garden *app.App) *cobra.Command {
 func newNewCommand(garden *app.App) *cobra.Command {
 	var scopes []string
 	var tags []string
-	var kind string
 
 	cmd := &cobra.Command{
 		Use:   "new <slug>",
@@ -71,7 +69,6 @@ func newNewCommand(garden *app.App) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			card, err := garden.NewCard(app.NewCardInput{
 				Slug:  args[0],
-				Kind:  kind,
 				Scope: scopes,
 				Tags:  tags,
 			})
@@ -83,7 +80,6 @@ func newNewCommand(garden *app.App) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringArrayVar(&scopes, "scope", nil, "repo-relative glob scope (repeatable)")
-	cmd.Flags().StringVar(&kind, "kind", contextcard.KindBackground, "context kind: rule, exception, warning, workflow, or background")
 	cmd.Flags().StringArrayVar(&tags, "tag", nil, "context tag (repeatable)")
 	return cmd
 }
@@ -152,13 +148,7 @@ func newAgentsSyncCommand(garden *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return output.WriteAgentsChange(cmd.OutOrStdout(), output.AgentsChange{
-				Path:     change.Path,
-				Before:   change.Before,
-				After:    change.After,
-				Applied:  change.Applied,
-				Findings: change.Findings,
-			}, "sync")
+			return output.WriteAgentsChange(cmd.OutOrStdout(), change, "sync")
 		},
 	}
 	cmd.Flags().BoolVar(&input.Apply, "apply", false, "write AGENTS.md instead of previewing")

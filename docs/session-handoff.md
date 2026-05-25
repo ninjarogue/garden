@@ -61,28 +61,23 @@ Key changes:
 
 ## Current AGENTS Index Shape
 
-Use only the approved base compact syntax. Do not invent Garden-specific compact fields like `kind:`, `tags:`, or `card:`.
+Use only the approved base compact syntax. Do not invent Garden-specific compact fields.
 
 Current row shape:
 
 ```txt
 [Garden Context Index]|root:.garden/context
 |IMPORTANT:Before editing a listed area, inspect the matching context card
-|src/routes/**:{rule,database,tenant-scoping,.garden/context/routes-query-modules.md}
+|src/routes/**:.garden/context/routes-query-modules.md
 ```
 
-The items inside `{...}` are plain compact index items:
-
-- card kind
-- tags
-- card path
+Rows map a scope directly to the Markdown context card path.
 
 ## Lint Scope
 
 Current lint intent remains objective/basic:
 
 - Each `.garden/context/*.md` file has YAML frontmatter.
-- `kind` exists and is one of `rule`, `exception`, `warning`, `workflow`, or `background`.
 - `scope` exists and has at least one non-empty glob.
 - `scope` does not contain `CHANGE_ME`.
 - `tags`, if present, is a list.

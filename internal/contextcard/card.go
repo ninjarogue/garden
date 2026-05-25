@@ -13,20 +13,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	KindRule       = "rule"
-	KindException  = "exception"
-	KindWarning    = "warning"
-	KindWorkflow   = "workflow"
-	KindBackground = "background"
-)
-
 var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 type Card struct {
 	Slug  string
 	Path  string
-	Kind  string
 	Scope []string
 	Tags  []string
 	Body  string
@@ -34,7 +25,6 @@ type Card struct {
 
 type CreateInput struct {
 	Slug  string
-	Kind  string
 	Scope []string
 	Tags  []string
 }
@@ -61,14 +51,8 @@ func (s *Store) Init() error {
 
 func (s *Store) Create(input CreateInput) (Card, error) {
 	input.Slug = strings.TrimSpace(input.Slug)
-	if input.Kind == "" {
-		input.Kind = KindBackground
-	}
 	if err := validateSlug(input.Slug); err != nil {
 		return Card{}, err
-	}
-	if !ValidKind(input.Kind) {
-		return Card{}, invalidKind(input.Kind)
 	}
 	scope := cleanStrings(input.Scope)
 	if len(scope) == 0 {
@@ -86,7 +70,7 @@ func (s *Store) Create(input CreateInput) (Card, error) {
 
 	relPath := cardPath(input.Slug)
 	absPath := filepath.Join(s.root, filepath.FromSlash(relPath))
-	content := renderTemplate(input.Slug, input.Kind, scope, tags)
+	content := renderTemplate(input.Slug, scope, tags)
 	card, err := Parse(relPath, []byte(content))
 	if err != nil {
 		return Card{}, err
@@ -181,7 +165,6 @@ func Parse(path string, data []byte) (Card, error) {
 	body := strings.TrimSpace(strings.TrimPrefix(rest[end+len("\n---"):], "\n"))
 
 	var meta struct {
-		Kind  string   `yaml:"kind"`
 		Scope []string `yaml:"scope"`
 		Tags  []string `yaml:"tags"`
 	}
@@ -195,13 +178,6 @@ func Parse(path string, data []byte) (Card, error) {
 		return Card{}, fmt.Errorf("read YAML frontmatter: %w", err)
 	}
 
-	kind := strings.TrimSpace(meta.Kind)
-	if kind == "" {
-		return Card{}, fmt.Errorf("kind is required")
-	}
-	if !ValidKind(kind) {
-		return Card{}, invalidKind(kind)
-	}
 	scope := cleanStrings(meta.Scope)
 	if len(scope) == 0 {
 		return Card{}, fmt.Errorf("scope must include at least one glob")
@@ -222,20 +198,10 @@ func Parse(path string, data []byte) (Card, error) {
 	return Card{
 		Slug:  slug,
 		Path:  path,
-		Kind:  kind,
 		Scope: scope,
 		Tags:  tags,
 		Body:  body,
 	}, nil
-}
-
-func ValidKind(kind string) bool {
-	switch strings.TrimSpace(kind) {
-	case KindRule, KindException, KindWarning, KindWorkflow, KindBackground:
-		return true
-	default:
-		return false
-	}
 }
 
 func validateSlug(slug string) error {
@@ -245,16 +211,9 @@ func validateSlug(slug string) error {
 	return nil
 }
 
-func invalidKind(kind string) error {
-	return fmt.Errorf("invalid kind %q; expected rule, exception, warning, workflow, or background", kind)
-}
-
-func renderTemplate(slug string, kind string, scope []string, tags []string) string {
+func renderTemplate(slug string, scope []string, tags []string) string {
 	var b strings.Builder
 	b.WriteString("---\n")
-	b.WriteString("kind: ")
-	b.WriteString(kind)
-	b.WriteString("\n")
 	b.WriteString("scope:\n")
 	for _, value := range scope {
 		b.WriteString("  - ")

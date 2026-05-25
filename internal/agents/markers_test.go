@@ -94,9 +94,7 @@ func TestUpsertBlockRejectsMalformedGardenMarkers(t *testing.T) {
 func TestSyncIndexCreatesManagedBlockWhenAbsent(t *testing.T) {
 	got, err := SyncIndex("# Human Rules\n", []IndexCard{{
 		Path:  ".garden/context/routes-query-modules.md",
-		Kind:  "rule",
 		Scope: []string{"src/routes/**"},
-		Tags:  []string{"database"},
 	}})
 	if err != nil {
 		t.Fatalf("SyncIndex returned error: %v", err)
@@ -116,7 +114,7 @@ func TestSyncIndexCreatesManagedBlockWhenAbsent(t *testing.T) {
 		IndexStartMarker,
 		"[Garden Context Index]|root:.garden/context",
 		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
-		"|src/routes/**:{rule,database,.garden/context/routes-query-modules.md}",
+		"|src/routes/**:.garden/context/routes-query-modules.md",
 		IndexEndMarker,
 		AgentsEndMarker,
 	}, "\n") + "\n"
@@ -136,9 +134,7 @@ func TestSyncIndexAddsMissingIndexInsideExistingGardenBlock(t *testing.T) {
 
 	got, err := SyncIndex(doc, []IndexCard{{
 		Path:  ".garden/context/context-card-format.md",
-		Kind:  "workflow",
 		Scope: []string{"internal/contextcard/**"},
-		Tags:  []string{"frontmatter"},
 	}})
 	if err != nil {
 		t.Fatalf("SyncIndex returned error: %v", err)
@@ -153,7 +149,7 @@ func TestSyncIndexAddsMissingIndexInsideExistingGardenBlock(t *testing.T) {
 		IndexStartMarker,
 		"[Garden Context Index]|root:.garden/context",
 		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
-		"|internal/contextcard/**:{workflow,frontmatter,.garden/context/context-card-format.md}",
+		"|internal/contextcard/**:.garden/context/context-card-format.md",
 		IndexEndMarker,
 		AgentsEndMarker,
 	}, "\n") + "\n"
@@ -175,7 +171,6 @@ func TestSyncIndexDoesNotInsertBlankLineBeforeAgentsEndMarker(t *testing.T) {
 
 	got, err := SyncIndex(doc, []IndexCard{{
 		Path:  ".garden/context/routes-query-modules.md",
-		Kind:  "rule",
 		Scope: []string{"src/routes/**"},
 	}})
 	if err != nil {
@@ -188,7 +183,7 @@ func TestSyncIndexDoesNotInsertBlankLineBeforeAgentsEndMarker(t *testing.T) {
 		IndexStartMarker,
 		"[Garden Context Index]|root:.garden/context",
 		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
-		"|src/routes/**:{rule,.garden/context/routes-query-modules.md}",
+		"|src/routes/**:.garden/context/routes-query-modules.md",
 		IndexEndMarker,
 		AgentsEndMarker,
 	}, "\n") + "\n"

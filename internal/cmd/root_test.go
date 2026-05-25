@@ -35,7 +35,6 @@ func TestNewCommandCreatesMarkdownContextCard(t *testing.T) {
 		"new",
 		"routes-query-modules",
 		"--scope", "src/routes/**",
-		"--kind", "rule",
 		"--tag", "database",
 		"--tag", "tenant-scoping",
 	)
@@ -51,7 +50,6 @@ func TestNewCommandCreatesMarkdownContextCard(t *testing.T) {
 		t.Fatalf("read card: %v", err)
 	}
 	wantCard := `---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -126,7 +124,6 @@ func TestAgentsSyncCommandAppliesContextIndex(t *testing.T) {
 	rootDir := t.TempDir()
 	garden := app.New(app.Options{Root: rootDir})
 	writeCard(t, rootDir, "routes-query-modules", `---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -157,7 +154,7 @@ Use query modules.
 +<!-- garden:index:start -->
 +[Garden Context Index]|root:.garden/context
 +|IMPORTANT:Before editing a listed area, inspect the matching context card
-+|src/routes/**:{rule,database,tenant-scoping,.garden/context/routes-query-modules.md}
++|src/routes/**:.garden/context/routes-query-modules.md
 +<!-- garden:index:end -->
 +<!-- garden:agents:end -->
 Applied AGENTS.md sync.
@@ -182,7 +179,7 @@ Applied AGENTS.md sync.
 		agents.IndexStartMarker,
 		"[Garden Context Index]|root:.garden/context",
 		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
-		"|src/routes/**:{rule,database,tenant-scoping,.garden/context/routes-query-modules.md}",
+		"|src/routes/**:.garden/context/routes-query-modules.md",
 		agents.IndexEndMarker,
 		agents.AgentsEndMarker,
 	}, "\n") + "\n"
@@ -195,7 +192,6 @@ func TestLintCommandPassesWhenAgentsIndexIsCurrent(t *testing.T) {
 	rootDir := t.TempDir()
 	garden := app.New(app.Options{Root: rootDir})
 	writeCard(t, rootDir, "routes-query-modules", `---
-kind: rule
 scope:
   - src/routes/**
 tags:
@@ -206,9 +202,7 @@ Use query modules.
 `)
 	block, err := agents.RenderBlock([]agents.IndexCard{{
 		Path:  ".garden/context/routes-query-modules.md",
-		Kind:  "rule",
 		Scope: []string{"src/routes/**"},
-		Tags:  []string{"database"},
 	}})
 	if err != nil {
 		t.Fatalf("RenderBlock returned error: %v", err)
@@ -230,7 +224,6 @@ func TestLintCommandReturnsErrorWhenLintFindsProblems(t *testing.T) {
 	rootDir := t.TempDir()
 	garden := app.New(app.Options{Root: rootDir})
 	writeCard(t, rootDir, "routes-query-modules", `---
-kind: rule
 scope:
   - src/routes/**
 ---
@@ -264,7 +257,6 @@ func TestRemoveCommandDeletesContextCard(t *testing.T) {
 	rootDir := t.TempDir()
 	garden := app.New(app.Options{Root: rootDir})
 	writeCard(t, rootDir, "routes-query-modules", `---
-kind: background
 scope:
   - src/routes/**
 ---
@@ -288,7 +280,6 @@ func TestAgentsSyncPreviewsByDefault(t *testing.T) {
 	rootDir := t.TempDir()
 	garden := app.New(app.Options{Root: rootDir})
 	writeCard(t, rootDir, "routes-query-modules", `---
-kind: background
 scope:
   - src/routes/**
 ---
@@ -314,7 +305,7 @@ Use query modules.
 +<!-- garden:index:start -->
 +[Garden Context Index]|root:.garden/context
 +|IMPORTANT:Before editing a listed area, inspect the matching context card
-+|src/routes/**:{background,.garden/context/routes-query-modules.md}
++|src/routes/**:.garden/context/routes-query-modules.md
 +<!-- garden:index:end -->
 +<!-- garden:agents:end -->
 Preview only. Re-run with --apply to write AGENTS.md.
@@ -338,7 +329,6 @@ func TestCommandValidationReturnsActionableErrors(t *testing.T) {
 		{name: "new requires exactly one slug", args: []string{"new", "one", "two", "--scope", "**/*"}, wantErr: "accepts exactly one context card slug"},
 		{name: "remove requires exactly one slug", args: []string{"remove", "one", "two"}, wantErr: "accepts exactly one context card slug"},
 		{name: "new requires scope", args: []string{"new", "routes-query-modules"}, wantErr: "scope must include at least one glob"},
-		{name: "new rejects invalid kind", args: []string{"new", "routes-query-modules", "--scope", "**/*", "--kind", "urgent"}, wantErr: "invalid kind \"urgent\"; expected rule, exception, warning, workflow, or background"},
 		{name: "new rejects invalid slug", args: []string{"new", "Routes_Query_Modules", "--scope", "**/*"}, wantErr: "invalid card slug"},
 		{name: "remember is not a core command", args: []string{"remember", "Use query modules.", "--scope", "**/*"}, wantErr: "unknown command \"remember\""},
 		{name: "pack is not a core command", args: []string{"pack", "--path", "src/file.go", "--task", "add endpoint"}, wantErr: "unknown command \"pack\""},

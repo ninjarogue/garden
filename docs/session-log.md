@@ -165,3 +165,46 @@
 
 ### Tags
 #codex #session-log #refactor #garden
+
+## 2026-05-25 15:28 CST
+
+### Context
+- Follow-up dogfooding and architecture review session on `master`.
+- User asked to carry out the Garden edit handoff, review the codebase with an architecture lens, and keep changes surgical.
+- Constraint: do not commit without explicit approval.
+
+### Executive Summary
+- Added a generated warning inside Garden-managed `AGENTS.md` blocks and made lint protect that warning.
+- Reversed the over-coupled tag validation rule so tags are human-only labels again.
+- Reduced duplicated command-test assertions and simplified a small app-layer indirection.
+- Committed the completed changes in focused commits.
+
+### Findings
+- A generated warning in `AGENTS.md` is a useful low-cost guardrail against hand-editing the managed block.
+- `garden lint` needed to enforce that guardrail; otherwise a stale block with a current index could pass.
+- Compact-index delimiter restrictions belonged on `scope`, not on human-only `tags`.
+- Command tests were repeating full generated AGENTS output already owned by lower-level tests.
+- `NewCardInput` and `changeAgentsFile` added names and hops without enough current value.
+
+### Progress Completed
+- Added generated warning support and synced `AGENTS.md`.
+- Fixed warning insertion for inline marker/content edge cases.
+- Added `missing-generated-warning` lint coverage.
+- Allowed compact-index delimiter characters in tags while keeping scope validation.
+- Updated context/product/PBT/testing docs to match current behavior.
+- Reduced `internal/cmd` sync tests to command UX and side-effect assertions.
+- Removed `NewCardInput` alias and inlined the one-use app sync helper.
+- Rebuilt the global `/home/aric/.local/bin/garden` binary after behavior changes.
+- Verified with `garden lint` and `env GOCACHE=/tmp/garden-go-build go test ./...`.
+
+### Open Blockers/Risks
+- No known blockers.
+- Further architecture cleanup should stay opportunistic; avoid adding layers or product surface.
+
+### Next Steps
+- Refresh this handoff and commit log docs if desired.
+- Push current `master` when ready.
+- Continue dogfooding direct Markdown card edits plus `garden agents sync --apply` and `garden lint`.
+
+### Tags
+#codex #session-log #architecture #garden

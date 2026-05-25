@@ -160,7 +160,7 @@ Initial checks:
 - `scope` exists and has at least one non-empty glob.
 - `scope` does not contain `CHANGE_ME`.
 - `tags`, if present, is a list.
-- Index metadata does not contain compact-index delimiters or control characters that would make `AGENTS.md` unsyncable.
+- Scope metadata does not contain compact-index delimiters or control characters that would make `AGENTS.md` unsyncable.
 - The Markdown body is non-empty.
 - The card filename/slug is valid.
 - `AGENTS.md` has the Garden managed block.

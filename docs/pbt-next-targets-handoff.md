@@ -110,7 +110,7 @@ Relevant code:
 - `Parse(path string, data []byte) (Card, error)`
 - `validateSlug(slug string) error`
 - `fieldLooksScalar(frontmatter string, field string) bool`
-- `validateCompactIndexMetadata(scope []string, tags []string) error`
+- `validateCompactIndexScope(scope []string) error`
 
 Property:
 
@@ -132,9 +132,8 @@ Suggested invalid classes:
 - Empty `scope`.
 - Scope containing `CHANGE_ME`.
 - Scalar `tags` instead of list.
-- Tag containing compact index delimiters: `|`, `{`, `}`, `,`.
 - Scope containing compact row delimiter: `|`.
-- Control characters in scope or tag.
+- Control characters in scope.
 - Empty body.
 - Invalid slug in path.
 
@@ -164,10 +163,8 @@ scope must include at least one glob
 scope must be a list
 scope cannot contain CHANGE_ME
 tags must be a list
-tag contains compact index syntax delimiter
 scope contains compact index syntax delimiter
 scope contains compact index syntax control character
-tag contains compact index syntax control character
 body cannot be empty
 invalid card slug
 ```

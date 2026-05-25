@@ -64,7 +64,7 @@ func (s *Store) Create(input CreateInput) (Card, error) {
 		}
 	}
 	tags := cleanStrings(input.Tags)
-	if err := validateCompactIndexMetadata(scope, tags); err != nil {
+	if err := validateCompactIndexScope(scope); err != nil {
 		return Card{}, err
 	}
 
@@ -188,7 +188,7 @@ func Parse(path string, data []byte) (Card, error) {
 		}
 	}
 	tags := cleanStrings(meta.Tags)
-	if err := validateCompactIndexMetadata(scope, tags); err != nil {
+	if err := validateCompactIndexScope(scope); err != nil {
 		return Card{}, err
 	}
 	if body == "" {
@@ -268,14 +268,9 @@ func cleanStrings(values []string) []string {
 	return cleaned
 }
 
-func validateCompactIndexMetadata(scope []string, tags []string) error {
+func validateCompactIndexScope(scope []string) error {
 	for _, value := range scope {
 		if err := rejectCompactIndexRowSyntax("scope", value); err != nil {
-			return err
-		}
-	}
-	for _, value := range tags {
-		if err := rejectCompactIndexItemSyntax("tag", value); err != nil {
 			return err
 		}
 	}
@@ -286,19 +281,6 @@ func rejectCompactIndexRowSyntax(field string, value string) error {
 	for _, r := range value {
 		switch r {
 		case '|':
-			return fmt.Errorf("%s contains compact index syntax delimiter %q", field, r)
-		}
-		if unicode.IsControl(r) {
-			return fmt.Errorf("%s contains compact index syntax control character", field)
-		}
-	}
-	return nil
-}
-
-func rejectCompactIndexItemSyntax(field string, value string) error {
-	for _, r := range value {
-		switch r {
-		case '|', '{', '}', ',':
 			return fmt.Errorf("%s contains compact index syntax delimiter %q", field, r)
 		}
 		if unicode.IsControl(r) {

@@ -75,12 +75,6 @@ func TestParseRejectsInvalidMarkdownCards(t *testing.T) {
 			wantErr: "tags must be a list",
 		},
 		{
-			name:    "tag cannot contain compact index delimiter",
-			path:    ".garden/context/routes-query-modules.md",
-			content: "---\nscope:\n  - src/routes/**\ntags:\n  - database,tenant\n---\n\nUse query modules.\n",
-			wantErr: "tag contains compact index syntax delimiter",
-		},
-		{
 			name:    "empty body",
 			path:    ".garden/context/routes-query-modules.md",
 			content: "---\nscope:\n  - src/routes/**\n---\n\n  \n",
@@ -105,6 +99,24 @@ func TestParseRejectsInvalidMarkdownCards(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseAllowsCompactIndexDelimitersInHumanOnlyTags(t *testing.T) {
+	card, err := Parse(".garden/context/routes-query-modules.md", []byte(`---
+scope:
+  - src/routes/**
+tags:
+  - database,tenant
+  - "{tenant|scope}"
+---
+
+Use query modules.
+`))
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+
+	assertStrings(t, card.Tags, []string{"database,tenant", "{tenant|scope}"})
 }
 
 func TestStoreCreatesCardWithYAMLSensitiveGlobScope(t *testing.T) {
@@ -147,24 +159,29 @@ Write the repo context here.
 	assertStrings(t, parsed.Scope, []string{"**/*", "*.go"})
 }
 
-func TestStoreCreateRejectsUnsyncableTagWithoutWritingCard(t *testing.T) {
+func TestStoreCreatePreservesHumanOnlyTagsWithCompactIndexDelimiters(t *testing.T) {
 	root := t.TempDir()
 	store := NewStore(root)
 
-	_, err := store.Create(CreateInput{
-		Slug:  "bad-tag",
+	card, err := store.Create(CreateInput{
+		Slug:  "special-tags",
 		Scope: []string{"src/**"},
-		Tags:  []string{"database,tenant"},
+		Tags:  []string{"database,tenant", "{tenant|scope}"},
 	})
-	if err == nil {
-		t.Fatal("expected compact index syntax error")
+	if err != nil {
+		t.Fatalf("Create returned error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "tag contains compact index syntax delimiter") {
-		t.Fatalf("error = %q, want compact index syntax delimiter", err.Error())
+	assertStrings(t, card.Tags, []string{"database,tenant", "{tenant|scope}"})
+
+	data, err := os.ReadFile(filepath.Join(root, ".garden", "context", "special-tags.md"))
+	if err != nil {
+		t.Fatalf("read card: %v", err)
 	}
-	if _, statErr := os.Stat(filepath.Join(root, ".garden", "context", "bad-tag.md")); !os.IsNotExist(statErr) {
-		t.Fatalf("invalid card was written, stat err = %v", statErr)
+	parsed, err := Parse(".garden/context/special-tags.md", data)
+	if err != nil {
+		t.Fatalf("Parse created card returned error: %v\n%s", err, string(data))
 	}
+	assertStrings(t, parsed.Tags, []string{"database,tenant", "{tenant|scope}"})
 }
 
 func TestStoreCreateRejectsDuplicateCardSlug(t *testing.T) {

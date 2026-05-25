@@ -94,11 +94,9 @@ Use query modules.
 		t.Fatalf("list returned error: %v", err)
 	}
 	wantOut := `.garden/context/global-background.md
-  kind: background
   scope: **/*
   tags: -
 .garden/context/routes-query-modules.md
-  kind: rule
   scope: src/routes/**
   tags: database, tenant-scoping
 `

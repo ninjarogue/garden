@@ -94,7 +94,7 @@ func (a *App) RemoveCard(slug string) (string, error) {
 	return a.cards.Remove(slug)
 }
 
-func (a *App) ListCards() ([]contextcard.Card, error) {
+func (a *App) ListCards() ([]Card, error) {
 	return a.cards.LoadAll()
 }
 

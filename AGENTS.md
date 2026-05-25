@@ -1,0 +1,25 @@
+<!-- garden:agents:start -->
+### Garden Context
+
+Detailed agent context lives in `.garden/context/*.md`.
+
+Before editing a listed area, inspect the matching context card.
+
+Index:
+<!-- garden:index:start -->
+[Garden Context Index]|root:.garden/context
+|IMPORTANT:Before editing a listed area, inspect the matching context card
+|**/*_test.go:.garden/context/testing-guidelines.md
+|.garden/context/**:.garden/context/context-card-format.md
+|AGENTS.md:.garden/context/agents-router.md
+|README.md:.garden/context/product-direction.md
+|docs/compact-index-syntax.md:.garden/context/agents-router.md
+|docs/product-direction.md:.garden/context/product-direction.md
+|docs/testing.md:.garden/context/testing-guidelines.md
+|internal/agents/**:.garden/context/agents-router.md
+|internal/app/**:.garden/context/app-layer-architecture.md
+|internal/cmd/**:.garden/context/app-layer-architecture.md
+|internal/contextcard/**:.garden/context/context-card-format.md
+|internal/output/**:.garden/context/app-layer-architecture.md
+<!-- garden:index:end -->
+<!-- garden:agents:end -->

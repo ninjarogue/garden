@@ -2,7 +2,7 @@
 
 Garden improves the `AGENTS.md` workflow for coding agents.
 
-The product should stay close to the pattern that already works: agents read `AGENTS.md`, discover compact repo guidance, and use normal file-reading tools when they need detail. Garden should not make the default workflow depend on injecting large retrieved context into the session.
+The product should stay close to the pattern that already works: agents read `AGENTS.md`, discover compact repo guidance, and use normal file-reading tools when they need detail.
 
 ## Core Bet
 
@@ -20,8 +20,6 @@ garden = authoring, indexing, syncing, and linting tool
 
 ## Product Identity
 
-Garden is not primarily a runtime retrieval engine.
-
 Garden is a maintainer for agent-readable repo context.
 
 It should help teams:
@@ -29,7 +27,7 @@ It should help teams:
 - Keep `AGENTS.md` compact and useful.
 - Store detailed context in Markdown cards.
 - Keep those cards discoverable from `AGENTS.md`.
-- Create and edit cards with consistent metadata.
+- Create card templates with consistent metadata.
 - Detect stale, duplicate, conflicting, missing, overly broad, or orphaned context.
 
 ## Source Of Truth
@@ -39,7 +37,6 @@ The source of truth should move toward Markdown context cards:
 ```txt
 .garden/context/
   routes-query-modules.md
-  retrieval-ranking.md
   product-direction.md
 ```
 
@@ -85,11 +82,9 @@ The agent sees that Garden exists, which files have guidance, and which card to 
 
 Garden should not ask agents to run a second discovery command when `AGENTS.md` already contains the map. For agent workflows, `AGENTS.md` is the discovery layer.
 
-## Deferred Runtime Retrieval
+## Core Workflow
 
-`garden pack` and `garden read` should not be central to the product direction right now.
-
-They risk recreating the original problem by injecting repeated or oversized context into the session. They may be useful later as debug or experimental commands, but Garden should first prove value by improving the static `AGENTS.md` and context-card workflow.
+Garden should prove value by improving the static `AGENTS.md` router and context-card workflow.
 
 ## Initial Command Shape
 
@@ -134,7 +129,7 @@ The file path/slug is the card identity. No separate `id` field is needed.
 
 `garden lint` should protect the quality of the context system.
 
-Editing should happen directly in the Markdown card. Humans can use their editor. Agents can use normal file-edit tools. Garden should validate and sync the result, not wrap every edit in a CLI.
+Editing should happen directly in the Markdown card. Humans can use their editor. Agents can use normal file-edit tools. Garden should validate and sync the result, not wrap normal Markdown editing in another command.
 
 The required card metadata should stay small:
 
@@ -151,9 +146,9 @@ tags:
   - tenant-scoping
 ```
 
-`priority` is not part of the new core model. It belonged to runtime retrieval ranking, and Garden is no longer centering task-specific ranking.
+`priority` is not part of the new core model. The card path/slug is the identity, `scope` drives routing, and optional `tags` are only labels for human organization.
 
-`garden edit`, `garden list`, and `garden search` are not part of the initial product shape. If Markdown cards are the source of truth, normal shell/editor tools such as `ls`, `rg`, file reads, and file edits are already good enough. Garden's unique value is structure, `AGENTS.md` sync, and context health.
+Additional commands that wrap normal file browsing or editing are not part of the core product shape. If Markdown cards are the source of truth, normal shell/editor tools such as `ls`, `rg`, file reads, and file edits are already good enough. Garden's unique value is structure, `AGENTS.md` sync, and context health.
 
 ## Lint Scope
 

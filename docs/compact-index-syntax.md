@@ -60,10 +60,6 @@ Card paths like `.garden/context/routes-query-modules.md` are plain index items,
 
 ## Future Candidates
 
-These may be useful later, but are not approved yet:
+No future Garden vocabulary is planned right now.
 
-- `cmd:` for an inline retrieval command
-- `mem:` or `ids:` for separating memory IDs from tags
-- `tags:` for separating tags from IDs
-
-If any candidate is approved, move it to `Approved Garden Vocabulary` with a precise definition.
+If a candidate is approved later, move it to `Approved Garden Vocabulary` with a precise definition.

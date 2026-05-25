@@ -10,7 +10,7 @@ AGENTS.md = small always-visible router
 garden = authoring, indexing, syncing, and linting tool
 ```
 
-Garden does not require agents to use a runtime context pack. Agents discover relevant cards from `AGENTS.md`, then read the Markdown card files with normal file tools.
+Agents discover relevant cards from `AGENTS.md`, then read the Markdown card files with normal file tools.
 
 ## Commands
 
@@ -51,6 +51,8 @@ garden remove routes-query-modules
 ```
 
 Run `garden agents sync --apply` again after adding, editing, or removing cards.
+
+Edit context cards directly as Markdown files; Garden validates and syncs them.
 
 ## Context Cards
 

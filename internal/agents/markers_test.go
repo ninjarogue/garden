@@ -104,6 +104,7 @@ func TestSyncIndexCreatesManagedBlockWhenAbsent(t *testing.T) {
 		"# Human Rules",
 		"",
 		AgentsStartMarker,
+		generatedWarning,
 		"### Garden Context",
 		"",
 		"Detailed agent context lives in `.garden/context/*.md`.",
@@ -143,6 +144,7 @@ func TestSyncIndexAddsMissingIndexInsideExistingGardenBlock(t *testing.T) {
 	want := strings.Join([]string{
 		"# Human Rules",
 		AgentsStartMarker,
+		generatedWarning,
 		"### Garden Context",
 		"Human-edited managed prose.",
 		"",
@@ -179,6 +181,39 @@ func TestSyncIndexDoesNotInsertBlankLineBeforeAgentsEndMarker(t *testing.T) {
 
 	want := strings.Join([]string{
 		AgentsStartMarker,
+		generatedWarning,
+		"### Garden Context",
+		IndexStartMarker,
+		"[Garden Context Index]|root:.garden/context",
+		"|IMPORTANT:Before editing a listed area, inspect the matching context card",
+		"|src/routes/**:.garden/context/routes-query-modules.md",
+		IndexEndMarker,
+		AgentsEndMarker,
+	}, "\n") + "\n"
+	if got != want {
+		t.Fatalf("synced doc = %q, want %q", got, want)
+	}
+}
+
+func TestSyncIndexSeparatesGeneratedWarningFromExistingInlineContent(t *testing.T) {
+	doc := AgentsStartMarker + "### Garden Context\n" +
+		IndexStartMarker + "\n" +
+		"[Garden Context Index]|root:.garden/context\n" +
+		"|old/**:{old,.garden/context/old.md}\n" +
+		IndexEndMarker + "\n" +
+		AgentsEndMarker + "\n"
+
+	got, err := SyncIndex(doc, []IndexCard{{
+		Path:  ".garden/context/routes-query-modules.md",
+		Scope: []string{"src/routes/**"},
+	}})
+	if err != nil {
+		t.Fatalf("SyncIndex returned error: %v", err)
+	}
+
+	want := strings.Join([]string{
+		AgentsStartMarker,
+		generatedWarning,
 		"### Garden Context",
 		IndexStartMarker,
 		"[Garden Context Index]|root:.garden/context",

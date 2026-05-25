@@ -44,6 +44,31 @@ func WriteLint(w io.Writer, findings []app.Finding) (bool, error) {
 	return hasErrorFinding(findings), err
 }
 
+func WriteCards(w io.Writer, cards []app.Card) error {
+	if len(cards) == 0 {
+		_, err := fmt.Fprintln(w, "No context cards found.")
+		return err
+	}
+	for _, card := range cards {
+		if _, err := fmt.Fprintf(w, "%s\n", card.Path); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(w, "  scope: %s\n", strings.Join(card.Scope, ", ")); err != nil {
+			return err
+		}
+		if len(card.Tags) > 0 {
+			if _, err := fmt.Fprintf(w, "  tags: %s\n", strings.Join(card.Tags, ", ")); err != nil {
+				return err
+			}
+		} else {
+			if _, err := fmt.Fprintln(w, "  tags: -"); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func writeFindings(w io.Writer, findings []app.Finding) (int, error) {
 	written := 0
 	for _, finding := range findings {

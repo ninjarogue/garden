@@ -103,9 +103,8 @@ func TestWriteLintFindingsWritesFindingsAndFailsOnErrors(t *testing.T) {
 
 func TestWriteCardsWritesCardMetadata(t *testing.T) {
 	var buf bytes.Buffer
-	err := WriteCards(&buf, []contextcard.Card{{
+	err := WriteCards(&buf, []app.Card{{
 		Path:  ".garden/context/routes-query-modules.md",
-		Kind:  contextcard.KindRule,
 		Scope: []string{"src/routes/**", "src/db/**"},
 		Tags:  []string{"database", "tenant-scoping"},
 	}})
@@ -114,7 +113,6 @@ func TestWriteCardsWritesCardMetadata(t *testing.T) {
 	}
 
 	want := `.garden/context/routes-query-modules.md
-  kind: rule
   scope: src/routes/**, src/db/**
   tags: database, tenant-scoping
 `

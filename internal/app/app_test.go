@@ -71,7 +71,7 @@ func TestNewCardCreatesMarkdownCard(t *testing.T) {
 		t.Fatalf("Init returned error: %v", err)
 	}
 
-	card, err := garden.NewCard(NewCardInput{
+	card, err := garden.NewCard(CreateCardInput{
 		Slug:  "routes-query-modules",
 		Scope: []string{"src/routes/**"},
 		Tags:  []string{"database"},
@@ -265,7 +265,7 @@ func TestRemoveDeletesContextCard(t *testing.T) {
 	if err := garden.Init(); err != nil {
 		t.Fatalf("Init returned error: %v", err)
 	}
-	if _, err := garden.NewCard(NewCardInput{Slug: "routes-query-modules", Scope: []string{"src/routes/**"}}); err != nil {
+	if _, err := garden.NewCard(CreateCardInput{Slug: "routes-query-modules", Scope: []string{"src/routes/**"}}); err != nil {
 		t.Fatalf("NewCard returned error: %v", err)
 	}
 

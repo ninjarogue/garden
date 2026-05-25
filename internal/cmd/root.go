@@ -66,7 +66,7 @@ func newNewCommand(garden *app.App) *cobra.Command {
 		Short: "Create a Markdown context card",
 		Args:  exactlyOneCardSlug,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			card, err := garden.NewCard(app.NewCardInput{
+			card, err := garden.NewCard(app.CreateCardInput{
 				Slug:  args[0],
 				Scope: scopes,
 				Tags:  tags,

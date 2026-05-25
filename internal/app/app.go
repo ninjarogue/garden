@@ -39,8 +39,6 @@ type CreateCardInput struct {
 	Tags  []string
 }
 
-type NewCardInput = CreateCardInput
-
 type FileError struct {
 	Path string
 	Err  error
@@ -86,8 +84,8 @@ func (a *App) Init() error {
 	return a.cards.Init()
 }
 
-func (a *App) NewCard(input NewCardInput) (Card, error) {
-	return a.cards.Create(CreateCardInput(input))
+func (a *App) NewCard(input CreateCardInput) (Card, error) {
+	return a.cards.Create(input)
 }
 
 func (a *App) RemoveCard(slug string) (string, error) {
@@ -100,9 +98,33 @@ func (a *App) AgentsSync(input AgentsSyncInput) (AgentsChange, error) {
 		return AgentsChange{}, err
 	}
 	indexCards := agentsIndexCards(cards)
-	return a.changeAgentsFile(input.Apply, func(current string) (string, error) {
-		return agents.SyncIndex(current, indexCards)
-	}, indexCards)
+
+	current, err := a.agentsFile.Read()
+	if err != nil {
+		return AgentsChange{}, err
+	}
+	next, err := agents.SyncIndex(current, indexCards)
+	if err != nil {
+		return AgentsChange{}, err
+	}
+	expected, err := agents.RenderIndex(indexCards)
+	if err != nil {
+		return AgentsChange{}, err
+	}
+	change := AgentsChange{
+		Path:     a.agentsFile.Path(),
+		Before:   current,
+		After:    next,
+		Applied:  false,
+		Findings: appFindings(agents.Lint(next, agents.LintOptions{ExpectedIndex: expected})),
+	}
+	if input.Apply {
+		if err := a.agentsFile.Write(next); err != nil {
+			return AgentsChange{}, err
+		}
+		change.Applied = true
+	}
+	return change, nil
 }
 
 func (a *App) Lint() ([]Finding, error) {
@@ -131,35 +153,6 @@ func (a *App) Lint() ([]Finding, error) {
 		findings = append(findings, appFindings(agents.Lint(content, agents.LintOptions{ExpectedIndex: expected}))...)
 	}
 	return findings, nil
-}
-
-func (a *App) changeAgentsFile(apply bool, render func(string) (string, error), indexCards []agents.IndexCard) (AgentsChange, error) {
-	current, err := a.agentsFile.Read()
-	if err != nil {
-		return AgentsChange{}, err
-	}
-	next, err := render(current)
-	if err != nil {
-		return AgentsChange{}, err
-	}
-	expected, err := agents.RenderIndex(indexCards)
-	if err != nil {
-		return AgentsChange{}, err
-	}
-	change := AgentsChange{
-		Path:     a.agentsFile.Path(),
-		Before:   current,
-		After:    next,
-		Applied:  false,
-		Findings: appFindings(agents.Lint(next, agents.LintOptions{ExpectedIndex: expected})),
-	}
-	if apply {
-		if err := a.agentsFile.Write(next); err != nil {
-			return AgentsChange{}, err
-		}
-		change.Applied = true
-	}
-	return change, nil
 }
 
 type localAgentsFile struct {

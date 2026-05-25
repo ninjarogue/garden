@@ -36,6 +36,7 @@ func NewRoot(opts Options) *cobra.Command {
 	root.SetErr(opts.Stderr)
 	root.AddCommand(
 		newInitCommand(opts.App),
+		newListCommand(opts.App),
 		newNewCommand(opts.App),
 		newRemoveCommand(opts.App),
 		newAgentsCommand(opts.App),
@@ -85,6 +86,21 @@ func newNewCommand(garden *app.App) *cobra.Command {
 	cmd.Flags().StringVar(&kind, "kind", contextcard.KindBackground, "context kind: rule, exception, warning, workflow, or background")
 	cmd.Flags().StringArrayVar(&tags, "tag", nil, "context tag (repeatable)")
 	return cmd
+}
+
+func newListCommand(garden *app.App) *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List Markdown context cards",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cards, err := garden.ListCards()
+			if err != nil {
+				return err
+			}
+			return output.WriteCards(cmd.OutOrStdout(), cards)
+		},
+	}
 }
 
 func newRemoveCommand(garden *app.App) *cobra.Command {

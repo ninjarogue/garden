@@ -26,6 +26,12 @@ Create a context card:
 garden new routes-query-modules --kind rule --scope "src/routes/**" --tag database
 ```
 
+List context cards:
+
+```sh
+garden list
+```
+
 Sync the generated Garden section in `AGENTS.md`:
 
 ```sh

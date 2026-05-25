@@ -1,24 +1,29 @@
 # Session Handoff
 
-## Current State
+## 2026-05-25 09:19 CST
+
+### Current State
 
 Branch: `master`
 
-Working tree is intentionally dirty. Do not commit unless the user explicitly approves.
+Working tree was clean before this handoff update. The branch is ahead of `origin/master`.
 
-`docs/` is now unignored and should be treated as local project state going forward.
+Recent commits:
 
-`README.md` has been replaced with the current Markdown context-card / AGENTS router command shape.
+- `11ba866 docs: update session log`
+- `1c42150 ref: decouple app layer types`
 
-Current tests pass:
+Latest verification for the refactor:
 
-```txt
+```sh
 env GOCACHE=/tmp/garden-go-build go test ./...
 ```
 
-## Product Direction
+Result: all packages passed.
 
-Garden should improve the Vercel-style `AGENTS.md` workflow.
+### Product Direction
+
+Garden should prove the simple AGENTS router workflow before adding new commands or lint rules.
 
 Core model:
 
@@ -28,95 +33,47 @@ AGENTS.md = small always-visible router
 garden = authoring, indexing, syncing, and linting tool
 ```
 
-Do not center runtime context injection. `garden pack`, `garden read`, runtime ranking, session dedupe, and task-specific retrieval remain out of scope for now.
+Garden should not center runtime retrieval, context packing, ranking, or session injection right now.
 
-Agents should discover context through `AGENTS.md`, then use normal file-reading tools to inspect relevant Markdown cards.
+### Recommended Next Move
 
-## Implemented This Session
+Dogfood Garden in this repo.
 
-Core commands now exist in code:
+Steps:
 
-```txt
-garden init
-garden new
-garden remove
-garden agents sync
-garden lint
-```
+1. Run `garden init`.
+2. Add a few real context cards:
+   - `product-direction`
+   - `context-card-format`
+   - `app-layer-architecture`
+   - `testing-guidelines`
+3. Run `garden agents sync --apply`.
+4. Run `garden lint`.
 
-Key changes:
+This should prove whether the core workflow is actually pleasant and whether the current card format and AGENTS index are enough.
 
-- Added `internal/contextcard` for Markdown card parsing/storage.
-- `garden init` creates `.garden/context`.
-- `garden new <slug>` creates `.garden/context/<slug>.md`.
-- `garden remove <slug>` deletes a context card.
-- `garden agents sync` renders a compact Garden-managed AGENTS block from cards.
-- `garden lint` validates cards and checks AGENTS index freshness.
-- `.gitignore` now allows `docs/` and `.garden/context/*.md`.
-- `docs/compact-index-syntax.md` examples now use context cards.
-- `README.md` now documents `init`, `new`, `agents sync`, `lint`, and `remove`.
-- Legacy `internal/memory`, `internal/retrieval`, and `internal/storage` packages were removed.
-- Follow-up review restored focused AGENTS marker/upsert tests and fixed YAML-safe card template rendering.
-- Test suite cleanup split broad command/output tests, tightened stable generated-output assertions, and added focused coverage for RenderIndex validation, AGENTS lint marker cases, scalar scope parsing, and duplicate card slugs.
+### What To Avoid For Now
 
-## Current AGENTS Index Shape
+Do not add new product surface before dogfooding.
 
-Use only the approved base compact syntax. Do not invent Garden-specific compact fields.
+Avoid adding lint rules just because they are mentioned as possible future checks. Future checks like duplicate, conflicting, missing, broad, or orphaned context should only be added when dogfooding exposes a concrete pain point.
 
-Current row shape:
+Keep lint objective and low-noise.
 
-```txt
-[Garden Context Index]|root:.garden/context
-|IMPORTANT:Before editing a listed area, inspect the matching context card
-|src/routes/**:.garden/context/routes-query-modules.md
-```
+### Likely Follow-Up After Dogfooding
 
-Rows map a scope directly to the Markdown context card path.
+If dogfooding exposes real problems, improve the smallest relevant part:
 
-## Lint Scope
+- Card format if writing cards feels awkward.
+- AGENTS index wording if discovery is unclear.
+- Lint if the workflow allows stale or misleading context.
+- Documentation if users cannot understand the loop quickly.
 
-Current lint intent remains objective/basic:
+Prefer improving the existing core loop over adding commands like `list`, `search`, `edit`, `pack`, or `read`.
 
-- Each `.garden/context/*.md` file has YAML frontmatter.
-- `scope` exists and has at least one non-empty glob.
-- `scope` does not contain `CHANGE_ME`.
-- `tags`, if present, is a list.
-- Index metadata cannot contain compact-index delimiters that would make `AGENTS.md` unsyncable.
-- Markdown body is non-empty.
-- Card filename/slug is valid.
-- `AGENTS.md` has the Garden managed block.
-- `AGENTS.md` index matches current context cards.
+### Important Preferences
 
-Avoid subjective lint rules for now.
-
-## Next Session Goal
-
-Review the final diff, decide what should be committed, and avoid adding new product surface unless explicitly requested.
-
-Suggested review areas:
-
-1. Inspect the full dirty diff for accidental scope creep.
-2. Decide whether `docs/session-*` should be committed or treated as local handoff notes.
-3. If committing, keep the Markdown-card / AGENTS router changes separate from any unrelated future work.
-
-## Known State/Risks
-
-- `docs/` is now unignored, so existing docs are untracked unless added later.
-- No commit has been made.
-- TDD was used for the main behavior pivot; keep using tests before refactors that change behavior.
-
-## Verification From This Session
-
-Latest test run:
-
-```txt
-env GOCACHE=/tmp/garden-go-build go test ./...
-```
-
-Result: all packages pass.
-
-## Important User Preferences
-
+- Use TDD for behavior changes.
+- Keep changes surgical.
 - Do not commit without explicit approval.
-- Keep responses shorter.
-- Start simple; avoid clever retrieval/session systems until the core AGENTS.md router workflow proves itself.
+- Keep responses concise.

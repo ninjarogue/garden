@@ -62,6 +62,10 @@ func (a *App) RemoveCard(slug string) (string, error) {
 	return a.cards.Remove(slug)
 }
 
+func (a *App) ListCards() ([]contextcard.Card, error) {
+	return a.cards.LoadAll()
+}
+
 func (a *App) AgentsSync(input AgentsSyncInput) (AgentsChange, error) {
 	cards, err := a.cards.LoadAll()
 	if err != nil {

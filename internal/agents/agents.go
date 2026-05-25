@@ -162,6 +162,9 @@ func Lint(doc string, opts LintOptions) []Finding {
 			return []Finding{errorFinding("stale-garden-index", "AGENTS.md Garden index is stale; run garden agents sync --apply")}
 		}
 	}
+	if !strings.Contains(block, generatedWarning) {
+		return []Finding{errorFinding("missing-generated-warning", "AGENTS.md Garden generated warning is missing; run garden agents sync --apply")}
+	}
 	return nil
 }
 

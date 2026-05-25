@@ -251,6 +251,28 @@ func TestLintReportsStaleGardenIndex(t *testing.T) {
 	}})
 }
 
+func TestLintReportsMissingGeneratedWarning(t *testing.T) {
+	expected, err := RenderIndex([]IndexCard{{
+		Path:  ".garden/context/routes-query-modules.md",
+		Scope: []string{"src/routes/**"},
+	}})
+	if err != nil {
+		t.Fatalf("RenderIndex returned error: %v", err)
+	}
+	doc := AgentsStartMarker + "\n### Garden Context\n" +
+		IndexStartMarker + "\n" +
+		expected +
+		IndexEndMarker + "\n" +
+		AgentsEndMarker + "\n"
+
+	findings := Lint(doc, LintOptions{ExpectedIndex: expected})
+	assertFindings(t, findings, []Finding{{
+		Severity: "error",
+		Code:     "missing-generated-warning",
+		Message:  "AGENTS.md Garden generated warning is missing; run garden agents sync --apply",
+	}})
+}
+
 func assertErrorContains(t *testing.T, err error, want string) {
 	t.Helper()
 	if err == nil {

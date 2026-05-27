@@ -6,10 +6,17 @@
 
 Branch: `feature/garden-check`
 
-Pushed commit:
+Latest pushed commit:
+
+```txt
+8de65db docs: add preliminary PR review handoff
+```
+
+Follow-up commits pushed after the initial PR implementation:
 
 ```txt
 42e3d33 fix: validate Garden scope globs
+8de65db docs: add preliminary PR review handoff
 ```
 
 What changed after reviewing PR #3:
@@ -64,6 +71,7 @@ Notable changes:
 - `internal/app/**`
 - `internal/cmd/**`
 - `internal/output/**`
+- `internal/scopeglob/**`
 - `docs/agent-heavy-team-product-exploration.md`
 
 Latest verification in this session:

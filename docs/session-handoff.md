@@ -2,6 +2,49 @@
 
 ## 2026-05-27
 
+### Preliminary PR Review Handoff: Scope Glob Validation And CI Summary
+
+Branch: `feature/garden-check`
+
+Pushed commit:
+
+```txt
+42e3d33 fix: validate Garden scope globs
+```
+
+What changed after reviewing PR #3:
+
+- Added `internal/scopeglob` as the shared Garden glob helper.
+- Moved Garden scope-glob syntax validation into context-card parsing/creation.
+- Kept `internal/review` defensive so direct `review.BuildReport` callers still fail on invalid scope globs.
+- Updated `garden lint` coverage so malformed scopes surface as `invalid-context-card`.
+- Updated `.garden/context/context-card-format.md` and synced `AGENTS.md` for `internal/scopeglob/**`.
+
+Important behavior:
+
+- `scopeglob.Validate(pattern)` checks the whole Garden scope pattern before it is trusted.
+- `scopeglob.Match(pattern, path)` now calls `Validate` first, so invalid later segments cannot hide behind an early non-match.
+- Example fixed case: `scopeglob.Match("internal/[*.go", "README.md")` now returns a syntax error instead of `false, nil`.
+
+Verification run after the fix:
+
+```sh
+env GOCACHE=/tmp/garden-go-build go test ./...
+env GOCACHE=/tmp/garden-go-build go run ./cmd/garden lint
+rg '"github.com/aric/garden/internal/(agents|contextcard|review)"' internal/cmd internal/output --glob '!**/*_test.go'
+git diff --check
+```
+
+Result: all passed. A sub-agent review also found no current bugs; its residual risk about direct `scopeglob.Match` callers was fixed by validating inside `Match`.
+
+Open product/design discussion for next session:
+
+- For local `garden check`, current output keeps all matched cards under `Relevant constraints`, whether or not they contain `## Verification`.
+- `Suggested verification` already filters to cards with extracted `## Verification`.
+- For future PR CI summary output, one hypothesis is to prefer only cards with `## Verification` in the main evidence summary, or split non-verification cards into a smaller `Additional constraints` section.
+- This is still open for discussion; do not treat it as a decided product requirement yet.
+- No implementation has been started for this filtering yet.
+
 ### Current State
 
 Branch: `feature/garden-check`

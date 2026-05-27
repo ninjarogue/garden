@@ -24,3 +24,19 @@ When changing command behavior, keep command tests focused on CLI UX and delegat
 When changing `internal/app`, preserve dependency injection through `CardStore` and `AgentsFile` so behavior can be tested without shelling out.
 
 Avoid adding cross-package shortcuts from commands directly into `internal/agents` or `internal/contextcard` unless the app layer has no orchestration value for that path.
+
+## Verification
+
+Run:
+
+```sh
+env GOCACHE=/tmp/garden-go-build go test ./...
+rg '"github.com/aric/garden/internal/(agents|contextcard|review)"' internal/cmd internal/output --glob '!**/*_test.go'
+```
+
+Expected:
+
+- Tests pass.
+- The `rg` command returns no production-file matches.
+- `internal/cmd` only wires CLI behavior through `internal/app` and `internal/output`.
+- `internal/output` formats app-owned DTOs and does not import lower-level domain packages.

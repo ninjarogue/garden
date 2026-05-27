@@ -8,6 +8,7 @@ import (
 
 	"github.com/aric/garden/internal/agents"
 	"github.com/aric/garden/internal/contextcard"
+	"github.com/aric/garden/internal/review"
 )
 
 type Options struct {
@@ -31,6 +32,32 @@ type Finding struct {
 	Severity string
 	Code     string
 	Message  string
+}
+
+type CheckInput struct {
+	ChangedPaths []string
+}
+
+type CheckReport struct {
+	ChangedFiles []CheckChangedFile
+	Warnings     []CheckWarning
+}
+
+type CheckChangedFile struct {
+	Path  string
+	Cards []CheckMatchedCard
+}
+
+type CheckMatchedCard struct {
+	Path         string
+	MatchedScope string
+	Verification string
+}
+
+type CheckWarning struct {
+	Path    string
+	Code    string
+	Message string
 }
 
 type CreateCardInput struct {
@@ -155,6 +182,21 @@ func (a *App) Lint() ([]Finding, error) {
 	return findings, nil
 }
 
+func (a *App) Check(input CheckInput) (CheckReport, error) {
+	cards, err := a.cards.LoadAll()
+	if err != nil {
+		return CheckReport{}, err
+	}
+	report, err := review.BuildReport(review.Input{
+		ChangedPaths: input.ChangedPaths,
+		Cards:        reviewCards(cards),
+	})
+	if err != nil {
+		return CheckReport{}, err
+	}
+	return appCheckReport(report), nil
+}
+
 type localAgentsFile struct {
 	path string
 }
@@ -265,4 +307,58 @@ func appFindings(findings []agents.Finding) []Finding {
 		})
 	}
 	return appFindings
+}
+
+func reviewCards(cards []Card) []review.Card {
+	reviewCards := make([]review.Card, 0, len(cards))
+	for _, card := range cards {
+		reviewCards = append(reviewCards, review.Card{
+			Path:  card.Path,
+			Scope: card.Scope,
+			Body:  card.Body,
+		})
+	}
+	return reviewCards
+}
+
+func appCheckReport(report review.Report) CheckReport {
+	return CheckReport{
+		ChangedFiles: appCheckChangedFiles(report.ChangedFiles),
+		Warnings:     appCheckWarnings(report.Warnings),
+	}
+}
+
+func appCheckChangedFiles(changedFiles []review.ChangedFile) []CheckChangedFile {
+	appFiles := make([]CheckChangedFile, 0, len(changedFiles))
+	for _, changedFile := range changedFiles {
+		appFiles = append(appFiles, CheckChangedFile{
+			Path:  changedFile.Path,
+			Cards: appCheckMatchedCards(changedFile.Cards),
+		})
+	}
+	return appFiles
+}
+
+func appCheckMatchedCards(cards []review.MatchedCard) []CheckMatchedCard {
+	appCards := make([]CheckMatchedCard, 0, len(cards))
+	for _, card := range cards {
+		appCards = append(appCards, CheckMatchedCard{
+			Path:         card.Path,
+			MatchedScope: card.MatchedScope,
+			Verification: card.Verification,
+		})
+	}
+	return appCards
+}
+
+func appCheckWarnings(warnings []review.Warning) []CheckWarning {
+	appWarnings := make([]CheckWarning, 0, len(warnings))
+	for _, warning := range warnings {
+		appWarnings = append(appWarnings, CheckWarning{
+			Path:    warning.Path,
+			Code:    warning.Code,
+			Message: warning.Message,
+		})
+	}
+	return appWarnings
 }

@@ -39,6 +39,7 @@ func NewRoot(opts Options) *cobra.Command {
 		newRemoveCommand(opts.App),
 		newAgentsCommand(opts.App),
 		newLintCommand(opts.App),
+		newCheckCommand(opts.App),
 	)
 	return root
 }
@@ -159,4 +160,25 @@ func newLintCommand(garden *app.App) *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newCheckCommand(garden *app.App) *cobra.Command {
+	var input app.CheckInput
+	cmd := &cobra.Command{
+		Use:   "check",
+		Short: "Report review context for changed files",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if len(input.ChangedPaths) == 0 {
+				return fmt.Errorf("at least one --changed path is required")
+			}
+			report, err := garden.Check(input)
+			if err != nil {
+				return err
+			}
+			return output.WriteCheckReport(cmd.OutOrStdout(), report)
+		},
+	}
+	cmd.Flags().StringArrayVar(&input.ChangedPaths, "changed", nil, "changed repo-relative path (repeatable)")
+	return cmd
 }

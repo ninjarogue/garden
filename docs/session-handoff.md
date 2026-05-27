@@ -4,19 +4,12 @@
 
 ### Preliminary PR Review Handoff: Scope Glob Validation And CI Summary
 
-Branch: `feature/garden-check`
+Branch: `master`
 
-Latest pushed commit:
-
-```txt
-8de65db docs: add preliminary PR review handoff
-```
-
-Follow-up commits pushed after the initial PR implementation:
+Current branch state:
 
 ```txt
-42e3d33 fix: validate Garden scope globs
-8de65db docs: add preliminary PR review handoff
+master includes merged PR #3 and is ahead of origin/master by local docs handoff cleanup commits.
 ```
 
 What changed after reviewing PR #3:
@@ -26,6 +19,7 @@ What changed after reviewing PR #3:
 - Kept `internal/review` defensive so direct `review.BuildReport` callers still fail on invalid scope globs.
 - Updated `garden lint` coverage so malformed scopes surface as `invalid-context-card`.
 - Updated `.garden/context/context-card-format.md` and synced `AGENTS.md` for `internal/scopeglob/**`.
+- Removed `docs/session-log.md`; `docs/session-handoff.md` is the single live handoff.
 
 Important behavior:
 
@@ -38,7 +32,7 @@ Verification run after the fix:
 ```sh
 env GOCACHE=/tmp/garden-go-build go test ./...
 env GOCACHE=/tmp/garden-go-build go run ./cmd/garden lint
-rg '"github.com/aric/garden/internal/(agents|contextcard|review)"' internal/cmd internal/output --glob '!**/*_test.go'
+rg '"github.com/aric/garden/internal/(agents|contextcard|review|scopeglob)"' internal/cmd internal/output --glob '!**/*_test.go'
 git diff --check
 ```
 
@@ -54,9 +48,9 @@ Open product/design discussion for next session:
 
 ### Current State
 
-Branch: `feature/garden-check`
+Branch: `master`
 
-Branch has product-direction docs and the first `garden check` implementation slice.
+Branch has product-direction docs, the first `garden check` implementation slice, scope-glob validation, and the consolidated session handoff.
 
 Notable changes:
 
@@ -80,7 +74,7 @@ Latest verification in this session:
 env GOCACHE=/tmp/garden-go-build go test ./...
 env GOCACHE=/tmp/garden-go-build go run ./cmd/garden lint
 env GOCACHE=/tmp/garden-go-build go run ./cmd/garden check --changed go.mod --changed Makefile --changed .golangci.yml --changed internal/cmd/root.go --changed internal/cmd/root_test.go --changed docs/product-direction.md
-rg '"github.com/aric/garden/internal/(agents|contextcard|review)"' internal/cmd internal/output --glob '!**/*_test.go'
+rg '"github.com/aric/garden/internal/(agents|contextcard|review|scopeglob)"' internal/cmd internal/output --glob '!**/*_test.go'
 git diff --check
 ```
 
@@ -155,6 +149,7 @@ Preserve the existing package boundary:
 
 ```txt
 internal/cmd -> internal/app -> internal/review
+internal/review -> internal/scopeglob
 internal/output -> internal/app DTOs
 ```
 
@@ -163,6 +158,7 @@ Responsibilities:
 - `internal/cmd`: Cobra wiring, `--changed` flag, CLI validation, command-level errors.
 - `internal/app`: app-owned `CheckInput` / `CheckReport` DTOs, load cards through `CardStore`, call `internal/review`, adapt DTOs.
 - `internal/review`: pure deterministic report logic.
+- `internal/scopeglob`: Garden scope-glob validation and matching semantics.
 - `internal/output`: human-readable `CheckReport` formatting.
 
 Do not let `internal/cmd` call `internal/review` directly. Do not let `internal/output` import `internal/review`.
@@ -174,6 +170,12 @@ Do not let `internal/cmd` call `internal/review` directly. Do not let `internal/
 - Extract `## Verification` sections from card bodies.
 - Detect verification surfaces from changed paths.
 - Return deterministic report data.
+
+`internal/scopeglob` should stay narrow:
+
+- Validate Garden scope glob syntax.
+- Match scope globs against slash-separated repo paths.
+- Preserve `*` as one-segment matching and `**` as cross-directory matching.
 
 ### Key Decisions
 
@@ -190,6 +192,7 @@ Do not let `internal/cmd` call `internal/review` directly. Do not let `internal/
 - Use deterministic matching from card `scope` globs, not LLM judgment.
 - Define `*` as not crossing `/`.
 - Define `**` as crossing directories.
+- Reject invalid scope glob syntax during context-card parse/create and defensively inside `review.BuildReport`.
 - Sort changed paths, matched cards, and matched scopes for stable output.
 - Detect verification surfaces path-only for v1: tests, `.github/workflows/**`, `.garden/context/**`, common build config files, and common lint/format config files.
 - Defer section-level verification-change detection until a diff-aware mode exists.
@@ -204,6 +207,7 @@ Follow:
 Testing shape:
 
 - `internal/review`: exact report structs for matching, verification extraction, warnings, ordering, no matches, and `**` semantics.
+- `internal/scopeglob`: exact tests for `Validate`, `Match`, invalid syntax, `*`, and `**` behavior.
 - `internal/app`: injected or temp-backed `CardStore` proving `App.Check` loads cards, adapts DTOs, and returns app-owned report data.
 - `internal/output`: exact equality for stable `CheckReport` output.
 - `internal/cmd`: CLI UX only; use temp dirs and real card files, assert key substrings rather than duplicating full output.
@@ -221,15 +225,16 @@ Before editing implementation files:
 
 - For `internal/app/**`, `internal/cmd/**`, or `internal/output/**`, read `.garden/context/app-layer-architecture.md`.
 - For tests, read `.garden/context/testing-guidelines.md`.
-- For context-card parsing changes, read `.garden/context/context-card-format.md`.
+- For context-card parsing or `internal/scopeglob/**` changes, read `.garden/context/context-card-format.md`.
 - For AGENTS rendering changes, read `.garden/context/agents-router.md`.
 
-The first `garden check` slice should not require AGENTS rendering changes.
+The first `garden check` slice does not change AGENTS rendering logic. If context-card scopes change, run `garden agents sync --apply` so the generated index stays current.
 
 ### Maintenance Notes
 
-- `docs/check-command-implementation-handoff.md` is the active implementation handoff for this slice.
+- `docs/check-command-implementation-handoff.md` is historical implementation guidance for the completed first slice.
 - `docs/changed-files-context-check-handoff.md` is now marked as superseded historical exploration.
+- `docs/session-log.md` has been removed to avoid competing with this handoff.
 - `README.md`, `.garden/context/product-direction.md`, `docs/testing.md`, and `.garden/context/testing-guidelines.md` have been updated for `garden check`.
 
 ### Important Preferences

@@ -29,3 +29,4 @@ env GOCACHE=/tmp/garden-go-build go test ./...
 - `internal/app`: orchestration across card storage and AGENTS sync/lint.
 - `internal/output`: stable human-readable command output.
 - `internal/review`: deterministic changed-file matching, verification extraction, and verification-surface warnings.
+- `internal/scopeglob`: Garden scope-glob validation and matching, especially `**` semantics and invalid-pattern errors.

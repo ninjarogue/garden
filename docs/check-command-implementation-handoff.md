@@ -1,5 +1,7 @@
 # Check Command Implementation Handoff
 
+Status: implemented in PR #3. This file is retained as the implementation plan and historical handoff; use `docs/session-handoff.md` for current state.
+
 This handoff covers the first implementation slice for `garden check`.
 
 ## Goal
@@ -35,6 +37,7 @@ Package responsibilities:
 - `internal/cmd`: Cobra wiring, `--changed` flag, CLI validation, command-level errors.
 - `internal/app`: app-owned `CheckInput` / `CheckReport` DTOs, load cards through `CardStore`, call `internal/review`, adapt DTOs.
 - `internal/review`: pure deterministic report logic.
+- `internal/scopeglob`: Garden scope-glob validation and matching semantics.
 - `internal/output`: human-readable `CheckReport` formatting.
 
 Do not let `internal/cmd` call `internal/review` directly. Do not let `internal/output` import `internal/review`.
@@ -89,7 +92,7 @@ Scope matching:
 - `**` should cross directories.
 - Test cases should include `internal/cmd/**`, `.garden/context/**`, and `**/*_test.go`.
 
-If matching semantics get tricky, isolate the matcher inside `internal/review` so callers do not care.
+Matching semantics now live in `internal/scopeglob` so context-card validation and review matching use the same Garden glob rules.
 
 ## Verification Extraction
 
@@ -177,6 +180,12 @@ Follow `.garden/context/testing-guidelines.md`.
 - `## Verification` extraction works and stops at next `##`.
 - Verification-surface paths produce warnings.
 - Output report data is stable regardless of card input order.
+
+`internal/scopeglob`:
+
+- Invalid glob syntax returns an error.
+- `**` crosses directories and can match zero segments.
+- `*` stays within one path segment.
 
 `internal/app`:
 

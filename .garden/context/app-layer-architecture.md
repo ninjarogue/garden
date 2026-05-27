@@ -18,6 +18,7 @@ Key boundaries:
 - `internal/contextcard` owns Markdown card storage, parsing, validation, and template rendering.
 - `internal/agents` owns AGENTS.md marker logic, compact index rendering, sync behavior, and lint findings.
 - `internal/output` owns human-readable CLI output formatting.
+- `internal/scopeglob` owns Garden scope-glob validation and matching semantics.
 
 When changing command behavior, keep command tests focused on CLI UX and delegate business behavior to `internal/app` or lower packages.
 
@@ -31,7 +32,7 @@ Run:
 
 ```sh
 env GOCACHE=/tmp/garden-go-build go test ./...
-rg '"github.com/aric/garden/internal/(agents|contextcard|review)"' internal/cmd internal/output --glob '!**/*_test.go'
+rg '"github.com/aric/garden/internal/(agents|contextcard|review|scopeglob)"' internal/cmd internal/output --glob '!**/*_test.go'
 ```
 
 Expected:

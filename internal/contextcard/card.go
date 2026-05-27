@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/aric/garden/internal/scopeglob"
 	"gopkg.in/yaml.v3"
 )
 
@@ -55,18 +56,10 @@ func (s *Store) Create(input CreateInput) (Card, error) {
 		return Card{}, err
 	}
 	scope := cleanStrings(input.Scope)
-	if len(scope) == 0 {
-		return Card{}, fmt.Errorf("scope must include at least one glob")
-	}
-	for _, value := range scope {
-		if strings.Contains(value, "CHANGE_ME") {
-			return Card{}, fmt.Errorf("scope cannot contain CHANGE_ME")
-		}
-	}
-	tags := cleanStrings(input.Tags)
-	if err := validateCompactIndexScope(scope); err != nil {
+	if err := validateScope(scope); err != nil {
 		return Card{}, err
 	}
+	tags := cleanStrings(input.Tags)
 
 	relPath := cardPath(input.Slug)
 	absPath := filepath.Join(s.root, filepath.FromSlash(relPath))
@@ -179,18 +172,10 @@ func Parse(path string, data []byte) (Card, error) {
 	}
 
 	scope := cleanStrings(meta.Scope)
-	if len(scope) == 0 {
-		return Card{}, fmt.Errorf("scope must include at least one glob")
-	}
-	for _, value := range scope {
-		if strings.Contains(value, "CHANGE_ME") {
-			return Card{}, fmt.Errorf("scope cannot contain CHANGE_ME")
-		}
-	}
-	tags := cleanStrings(meta.Tags)
-	if err := validateCompactIndexScope(scope); err != nil {
+	if err := validateScope(scope); err != nil {
 		return Card{}, err
 	}
+	tags := cleanStrings(meta.Tags)
 	if body == "" {
 		return Card{}, fmt.Errorf("body cannot be empty")
 	}
@@ -268,8 +253,17 @@ func cleanStrings(values []string) []string {
 	return cleaned
 }
 
-func validateCompactIndexScope(scope []string) error {
+func validateScope(scope []string) error {
+	if len(scope) == 0 {
+		return fmt.Errorf("scope must include at least one glob")
+	}
 	for _, value := range scope {
+		if strings.Contains(value, "CHANGE_ME") {
+			return fmt.Errorf("scope cannot contain CHANGE_ME")
+		}
+		if err := scopeglob.Validate(value); err != nil {
+			return fmt.Errorf("invalid scope glob %q: %w", value, err)
+		}
 		if err := rejectCompactIndexRowSyntax("scope", value); err != nil {
 			return err
 		}

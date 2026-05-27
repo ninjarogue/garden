@@ -188,6 +188,29 @@ func TestBuildReportRejectsInvalidChangedPaths(t *testing.T) {
 	}
 }
 
+func TestBuildReportRejectsInvalidScopeGlobs(t *testing.T) {
+	_, err := BuildReport(Input{
+		ChangedPaths: []string{"README.md"},
+		Cards: []Card{{
+			Path:  ".garden/context/broken.md",
+			Scope: []string{"internal/[*.go"},
+			Body:  "Broken guidance.",
+		}},
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	for _, want := range []string{
+		".garden/context/broken.md",
+		`invalid scope glob "internal/[*.go"`,
+		"syntax error in pattern",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %q, want substring %q", err.Error(), want)
+		}
+	}
+}
+
 func assertReport(t *testing.T, got Report, want Report) {
 	t.Helper()
 	if !reflect.DeepEqual(got, want) {

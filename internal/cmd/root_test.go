@@ -163,6 +163,34 @@ Use query modules.
 	}
 }
 
+func TestLintCommandReturnsErrorForInvalidScopeGlob(t *testing.T) {
+	rootDir := t.TempDir()
+	garden := app.New(app.Options{Root: rootDir})
+	writeCard(t, rootDir, "broken-scope", `---
+scope:
+  - internal/[*.go
+---
+
+Use query modules.
+`)
+	block, err := agents.RenderBlock(nil)
+	if err != nil {
+		t.Fatalf("RenderBlock returned error: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(rootDir, "AGENTS.md"), []byte(block), 0o644); err != nil {
+		t.Fatalf("write AGENTS.md: %v", err)
+	}
+
+	out, _, err := execute(garden, "lint")
+	if err == nil {
+		t.Fatal("expected lint command error")
+	}
+	if err.Error() != "garden lint failed" {
+		t.Fatalf("error = %q, want garden lint failed", err.Error())
+	}
+	assertContains(t, out, `error invalid-context-card: .garden/context/broken-scope.md: invalid scope glob "internal/[*.go"`)
+}
+
 func TestCheckCommandReportsReviewContextForChangedPaths(t *testing.T) {
 	rootDir := t.TempDir()
 	garden := app.New(app.Options{Root: rootDir})

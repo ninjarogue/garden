@@ -22,5 +22,6 @@ Index:
 |internal/cmd/**:.garden/context/app-layer-architecture.md
 |internal/contextcard/**:.garden/context/context-card-format.md
 |internal/output/**:.garden/context/app-layer-architecture.md
+|internal/scopeglob/**:.garden/context/context-card-format.md
 <!-- garden:index:end -->
 <!-- garden:agents:end -->

@@ -5,6 +5,8 @@ import (
 	"path"
 	"sort"
 	"strings"
+
+	"github.com/aric/garden/internal/scopeglob"
 )
 
 type Card struct {
@@ -51,12 +53,18 @@ func BuildReport(input Input) (Report, error) {
 	sort.Slice(cards, func(i, j int) bool {
 		return cards[i].Path < cards[j].Path
 	})
+	if err := validateCardScopes(cards); err != nil {
+		return Report{}, err
+	}
 
 	report := Report{ChangedFiles: make([]ChangedFile, 0, len(changedPaths))}
 	for _, changedPath := range changedPaths {
 		changedFile := ChangedFile{Path: changedPath}
 		for _, card := range cards {
-			matchedScopes := matchingScopes(changedPath, card.Scope)
+			matchedScopes, err := matchingScopes(changedPath, card.Scope)
+			if err != nil {
+				return Report{}, fmt.Errorf("%s: %w", card.Path, err)
+			}
 			for _, matchedScope := range matchedScopes {
 				changedFile.Cards = append(changedFile.Cards, MatchedCard{
 					Path:         card.Path,
@@ -71,6 +79,17 @@ func BuildReport(input Input) (Report, error) {
 		}
 	}
 	return report, nil
+}
+
+func validateCardScopes(cards []Card) error {
+	for _, card := range cards {
+		for _, scope := range card.Scope {
+			if err := scopeglob.Validate(scope); err != nil {
+				return fmt.Errorf("%s: invalid scope glob %q: %w", card.Path, scope, err)
+			}
+		}
+	}
+	return nil
 }
 
 func normalizeChangedPaths(paths []string) ([]string, error) {
@@ -100,46 +119,19 @@ func hasWindowsDrivePrefix(changedPath string) bool {
 	return len(changedPath) >= 3 && changedPath[1] == ':' && changedPath[2] == '/'
 }
 
-func matchingScopes(changedPath string, scopes []string) []string {
+func matchingScopes(changedPath string, scopes []string) ([]string, error) {
 	matches := []string{}
 	for _, scope := range scopes {
-		if globMatch(scope, changedPath) {
+		matched, err := scopeglob.Match(scope, changedPath)
+		if err != nil {
+			return nil, fmt.Errorf("invalid scope glob %q: %w", scope, err)
+		}
+		if matched {
 			matches = append(matches, scope)
 		}
 	}
 	sort.Strings(matches)
-	return matches
-}
-
-func globMatch(pattern string, name string) bool {
-	patternParts := strings.Split(pattern, "/")
-	nameParts := strings.Split(name, "/")
-	return matchParts(patternParts, nameParts)
-}
-
-func matchParts(patternParts []string, nameParts []string) bool {
-	if len(patternParts) == 0 {
-		return len(nameParts) == 0
-	}
-	if patternParts[0] == "**" {
-		if matchParts(patternParts[1:], nameParts) {
-			return true
-		}
-		for i := range nameParts {
-			if matchParts(patternParts[1:], nameParts[i+1:]) {
-				return true
-			}
-		}
-		return false
-	}
-	if len(nameParts) == 0 {
-		return false
-	}
-	matched, err := path.Match(patternParts[0], nameParts[0])
-	if err != nil || !matched {
-		return false
-	}
-	return matchParts(patternParts[1:], nameParts[1:])
+	return matches, nil
 }
 
 func extractVerification(body string) string {

@@ -163,6 +163,81 @@ Use query modules.
 	}
 }
 
+func TestLintCommandReturnsErrorForInvalidScopeGlob(t *testing.T) {
+	rootDir := t.TempDir()
+	garden := app.New(app.Options{Root: rootDir})
+	writeCard(t, rootDir, "broken-scope", `---
+scope:
+  - internal/[*.go
+---
+
+Use query modules.
+`)
+	block, err := agents.RenderBlock(nil)
+	if err != nil {
+		t.Fatalf("RenderBlock returned error: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(rootDir, "AGENTS.md"), []byte(block), 0o644); err != nil {
+		t.Fatalf("write AGENTS.md: %v", err)
+	}
+
+	out, _, err := execute(garden, "lint")
+	if err == nil {
+		t.Fatal("expected lint command error")
+	}
+	if err.Error() != "garden lint failed" {
+		t.Fatalf("error = %q, want garden lint failed", err.Error())
+	}
+	assertContains(t, out, `error invalid-context-card: .garden/context/broken-scope.md: invalid scope glob "internal/[*.go"`)
+}
+
+func TestCheckCommandReportsReviewContextForChangedPaths(t *testing.T) {
+	rootDir := t.TempDir()
+	garden := app.New(app.Options{Root: rootDir})
+	writeCard(t, rootDir, "app-layer-architecture", `---
+scope:
+  - internal/app/**
+  - internal/cmd/**
+---
+
+# App Layer Architecture
+
+Keep commands thin.
+
+## Verification
+
+Run tests.
+`)
+
+	out, _, err := execute(garden,
+		"check",
+		"--changed", "internal/cmd/root.go",
+		"--changed", "internal/cmd/root_test.go",
+	)
+	if err != nil {
+		t.Fatalf("check returned error: %v", err)
+	}
+	assertContains(t, out, "Garden review context\n")
+	assertContains(t, out, "  internal/cmd/root.go\n")
+	assertContains(t, out, "  internal/cmd/root_test.go\n")
+	assertContains(t, out, "    .garden/context/app-layer-architecture.md\n")
+	assertContains(t, out, "    matched: internal/cmd/**\n")
+	assertContains(t, out, "    Run tests.\n")
+	assertContains(t, out, "  internal/cmd/root_test.go: changed test file\n")
+}
+
+func TestCheckCommandRequiresChangedFlag(t *testing.T) {
+	garden := app.New(app.Options{Root: t.TempDir()})
+
+	_, _, err := execute(garden, "check")
+	if err == nil {
+		t.Fatal("expected check command error")
+	}
+	if !strings.Contains(err.Error(), "at least one --changed path is required") {
+		t.Fatalf("error = %q", err.Error())
+	}
+}
+
 func TestRemoveCommandDeletesContextCard(t *testing.T) {
 	rootDir := t.TempDir()
 	garden := app.New(app.Options{Root: rootDir})

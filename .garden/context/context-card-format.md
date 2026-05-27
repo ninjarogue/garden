@@ -2,6 +2,7 @@
 scope:
   - .garden/context/**
   - internal/contextcard/**
+  - internal/scopeglob/**
 tags:
   - context
 ---
@@ -28,6 +29,7 @@ Rules enforced by `internal/contextcard`:
 
 - The file slug is the card identity and must be lowercase words separated by hyphens.
 - `scope` must be a non-empty YAML list.
+- Each `scope` entry must be a valid Garden glob.
 - `scope` cannot contain `CHANGE_ME`.
 - `tags`, when present, must be a YAML list.
 - Scope cannot contain compact-index delimiters or control characters that would make `AGENTS.md` unsyncable.

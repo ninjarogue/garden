@@ -69,6 +69,12 @@ func TestParseRejectsInvalidMarkdownCards(t *testing.T) {
 			wantErr: "scope cannot contain CHANGE_ME",
 		},
 		{
+			name:    "invalid scope glob",
+			path:    ".garden/context/routes-query-modules.md",
+			content: "---\nscope:\n  - internal/[*.go\n---\n\nUse query modules.\n",
+			wantErr: `invalid scope glob "internal/[*.go"`,
+		},
+		{
 			name:    "tags must be list",
 			path:    ".garden/context/routes-query-modules.md",
 			content: "---\nscope:\n  - src/routes/**\ntags: database\n---\n\nUse query modules.\n",
@@ -182,6 +188,23 @@ func TestStoreCreatePreservesHumanOnlyTagsWithCompactIndexDelimiters(t *testing.
 		t.Fatalf("Parse created card returned error: %v\n%s", err, string(data))
 	}
 	assertStrings(t, parsed.Tags, []string{"database,tenant", "{tenant|scope}"})
+}
+
+func TestStoreCreateRejectsInvalidScopeGlob(t *testing.T) {
+	root := t.TempDir()
+	store := NewStore(root)
+
+	_, err := store.Create(CreateInput{
+		Slug:  "broken-scope",
+		Scope: []string{"internal/[*.go"},
+	})
+	if err == nil {
+		t.Fatal("expected invalid scope glob error")
+	}
+	wantErr := `invalid scope glob "internal/[*.go"`
+	if !strings.Contains(err.Error(), wantErr) {
+		t.Fatalf("error = %q, want substring %q", err.Error(), wantErr)
+	}
 }
 
 func TestStoreCreateRejectsDuplicateCardSlug(t *testing.T) {

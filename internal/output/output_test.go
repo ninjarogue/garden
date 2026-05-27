@@ -100,3 +100,75 @@ func TestWriteLintFindingsWritesFindingsAndFailsOnErrors(t *testing.T) {
 		t.Fatalf("output = %q, want %q", buf.String(), want)
 	}
 }
+
+func TestWriteCheckReportWritesCompactReviewContext(t *testing.T) {
+	var buf bytes.Buffer
+	err := WriteCheckReport(&buf, app.CheckReport{ChangedFiles: []app.CheckChangedFile{{
+		Path: "internal/cmd/root.go",
+		Cards: []app.CheckMatchedCard{{
+			Path:         ".garden/context/app-layer-architecture.md",
+			MatchedScope: "internal/cmd/**",
+			Verification: "Run:\n\n```sh\nenv GOCACHE=/tmp/garden-go-build go test ./...\n```",
+		}},
+	}}})
+	if err != nil {
+		t.Fatalf("WriteCheckReport returned error: %v", err)
+	}
+
+	want := "Garden review context\n" +
+		"\n" +
+		"Changed:\n" +
+		"  internal/cmd/root.go\n" +
+		"\n" +
+		"Relevant constraints:\n" +
+		"  internal/cmd/root.go\n" +
+		"    .garden/context/app-layer-architecture.md\n" +
+		"    matched: internal/cmd/**\n" +
+		"\n" +
+		"Suggested verification:\n" +
+		"  .garden/context/app-layer-architecture.md\n" +
+		"    Run:\n" +
+		"\n" +
+		"    ```sh\n" +
+		"    env GOCACHE=/tmp/garden-go-build go test ./...\n" +
+		"    ```\n" +
+		"\n" +
+		"Verification surfaces changed:\n" +
+		"  none\n"
+	if buf.String() != want {
+		t.Fatalf("output = %q, want %q", buf.String(), want)
+	}
+}
+
+func TestWriteCheckReportWritesNoMatchesAndWarnings(t *testing.T) {
+	var buf bytes.Buffer
+	err := WriteCheckReport(&buf, app.CheckReport{
+		ChangedFiles: []app.CheckChangedFile{{Path: "README.md"}},
+		Warnings: []app.CheckWarning{{
+			Path:    "internal/cmd/root_test.go",
+			Code:    "verification-surface-changed",
+			Message: "changed test file",
+		}},
+	})
+	if err != nil {
+		t.Fatalf("WriteCheckReport returned error: %v", err)
+	}
+
+	want := "Garden review context\n" +
+		"\n" +
+		"Changed:\n" +
+		"  README.md\n" +
+		"\n" +
+		"Relevant constraints:\n" +
+		"  README.md\n" +
+		"    none\n" +
+		"\n" +
+		"Suggested verification:\n" +
+		"  none\n" +
+		"\n" +
+		"Verification surfaces changed:\n" +
+		"  internal/cmd/root_test.go: changed test file\n"
+	if buf.String() != want {
+		t.Fatalf("output = %q, want %q", buf.String(), want)
+	}
+}

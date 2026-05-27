@@ -44,6 +44,116 @@ func WriteLint(w io.Writer, findings []app.Finding) (bool, error) {
 	return hasErrorFinding(findings), err
 }
 
+func WriteCheckReport(w io.Writer, report app.CheckReport) error {
+	if _, err := fmt.Fprintln(w, "Garden review context"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "Changed:"); err != nil {
+		return err
+	}
+	for _, changedFile := range report.ChangedFiles {
+		if _, err := fmt.Fprintf(w, "  %s\n", changedFile.Path); err != nil {
+			return err
+		}
+	}
+
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "Relevant constraints:"); err != nil {
+		return err
+	}
+	for _, changedFile := range report.ChangedFiles {
+		if _, err := fmt.Fprintf(w, "  %s\n", changedFile.Path); err != nil {
+			return err
+		}
+		if len(changedFile.Cards) == 0 {
+			if _, err := fmt.Fprintln(w, "    none"); err != nil {
+				return err
+			}
+			continue
+		}
+		for _, card := range changedFile.Cards {
+			if _, err := fmt.Fprintf(w, "    %s\n", card.Path); err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(w, "    matched: %s\n", card.MatchedScope); err != nil {
+				return err
+			}
+		}
+	}
+
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "Suggested verification:"); err != nil {
+		return err
+	}
+	if err := writeSuggestedVerification(w, report); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(w, "Verification surfaces changed:"); err != nil {
+		return err
+	}
+	if len(report.Warnings) == 0 {
+		_, err := fmt.Fprintln(w, "  none")
+		return err
+	}
+	for _, warning := range report.Warnings {
+		if _, err := fmt.Fprintf(w, "  %s: %s\n", warning.Path, warning.Message); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeSuggestedVerification(w io.Writer, report app.CheckReport) error {
+	wrote := false
+	seen := map[string]bool{}
+	for _, changedFile := range report.ChangedFiles {
+		for _, card := range changedFile.Cards {
+			if card.Verification == "" || seen[card.Path] {
+				continue
+			}
+			seen[card.Path] = true
+			wrote = true
+			if _, err := fmt.Fprintf(w, "  %s\n", card.Path); err != nil {
+				return err
+			}
+			if err := writeIndentedBlock(w, card.Verification, "    "); err != nil {
+				return err
+			}
+		}
+	}
+	if !wrote {
+		_, err := fmt.Fprintln(w, "  none")
+		return err
+	}
+	return nil
+}
+
+func writeIndentedBlock(w io.Writer, content string, indent string) error {
+	for _, line := range strings.Split(content, "\n") {
+		if line == "" {
+			if _, err := fmt.Fprintln(w); err != nil {
+				return err
+			}
+			continue
+		}
+		if _, err := fmt.Fprintf(w, "%s%s\n", indent, line); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func writeFindings(w io.Writer, findings []app.Finding) (int, error) {
 	written := 0
 	for _, finding := range findings {

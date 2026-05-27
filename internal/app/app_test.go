@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -62,6 +63,35 @@ func TestLintReturnsAppOwnedFindingsFromInjectedStore(t *testing.T) {
 		Code:     "invalid-context-card",
 		Message:  ".garden/context/broken-card.md: scope must be a list",
 	}})
+}
+
+func TestCheckReturnsAppOwnedReportFromInjectedStore(t *testing.T) {
+	store := &stubCardStore{
+		loadAllCards: []Card{{
+			Slug:  "app-layer-architecture",
+			Path:  ".garden/context/app-layer-architecture.md",
+			Scope: []string{"internal/app/**", "internal/cmd/**"},
+			Body:  "# App Layer Architecture\n\n## Verification\n\nRun tests.",
+		}},
+	}
+	garden := &App{cards: store, agentsFile: &stubAgentsFile{}}
+
+	report, err := garden.Check(CheckInput{ChangedPaths: []string{"internal/cmd/root.go"}})
+	if err != nil {
+		t.Fatalf("Check returned error: %v", err)
+	}
+	if store.loadAllCalls != 1 {
+		t.Fatalf("LoadAll calls = %d, want 1", store.loadAllCalls)
+	}
+	want := CheckReport{ChangedFiles: []CheckChangedFile{{
+		Path: "internal/cmd/root.go",
+		Cards: []CheckMatchedCard{{
+			Path:         ".garden/context/app-layer-architecture.md",
+			MatchedScope: "internal/cmd/**",
+			Verification: "Run tests.",
+		}},
+	}}, Warnings: []CheckWarning{}}
+	assertCheckReport(t, report, want)
 }
 
 func TestNewCardCreatesMarkdownCard(t *testing.T) {
@@ -297,6 +327,12 @@ func assertAppFindings(t *testing.T, got []Finding, want []Finding) {
 		if got[i] != want[i] {
 			t.Fatalf("findings[%d] = %#v, want %#v; all findings = %#v", i, got[i], want[i], got)
 		}
+	}
+}
+
+func assertCheckReport(t *testing.T, got CheckReport, want CheckReport) {
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("report = %#v, want %#v", got, want)
 	}
 }
 

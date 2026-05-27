@@ -1,16 +1,17 @@
 # Garden
 
-Garden maintains a small `AGENTS.md` router for coding agents and stores detailed repo context in Markdown cards.
+Garden maintains a small `AGENTS.md` router for coding agents, stores detailed repo context in Markdown cards, and reports review context for changed files.
 
 Core model:
 
 ```txt
 AGENTS.md = small always-visible router
 .garden/context/*.md = human-readable context cards
-garden = authoring, indexing, syncing, and linting tool
+garden check = changed-files to review evidence
 ```
 
 Agents discover relevant cards from `AGENTS.md`, then read the Markdown card files with normal file tools.
+Reviewers can run `garden check` to see which cards, suggested verification, and verification-surface warnings apply to changed files.
 
 ## Commands
 
@@ -42,6 +43,12 @@ Validate context cards and the `AGENTS.md` index:
 
 ```sh
 garden lint
+```
+
+Report review context for changed files:
+
+```sh
+garden check --changed internal/cmd/root.go
 ```
 
 Remove a context card:

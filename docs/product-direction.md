@@ -1,94 +1,195 @@
 # Garden Product Direction
 
-Garden improves the `AGENTS.md` workflow for coding agents.
+Garden is a PR context and verification reporter for agent-assisted software work.
 
-The product should stay close to the pattern that already works: agents read `AGENTS.md`, discover compact repo guidance, and use normal file-reading tools when they need detail.
-
-## Core Bet
-
-Agent context should live in the repo as readable, reviewable files.
-
-`AGENTS.md` should stay small. It should route agents to the right context, not contain every rule, exception, warning, and workflow note.
-
-Garden's job is to maintain that system:
+Its job is to answer, at review time:
 
 ```txt
-AGENTS.md = small always-visible router
-context cards = human-readable source of truth
-garden = authoring, indexing, syncing, and linting tool
+What repo constraints apply to this change?
+What evidence should prove they were preserved?
+Did this PR also change the evidence?
 ```
 
-## Product Identity
+## Core Thesis
 
-Garden is a maintainer for agent-readable repo context.
+Rule files are advisory constraints. Tests and analysis are physical constraints. Garden should connect the two at the moment where they matter most: PR review.
 
-It should help teams:
+Garden should not try to make agents obey prose rules. It should make the relevant rules, checks, and changed verification surfaces visible to humans and CI.
 
-- Keep `AGENTS.md` compact and useful.
-- Store detailed context in Markdown cards.
-- Keep those cards discoverable from `AGENTS.md`.
-- Create card templates with consistent metadata.
-- Detect stale, duplicate, conflicting, missing, overly broad, or orphaned context.
-
-## Source Of Truth
-
-The source of truth should move toward Markdown context cards:
+The narrow product promise:
 
 ```txt
-.garden/context/
-  routes-query-modules.md
-  product-direction.md
+Garden turns changed files into reviewable constraint evidence.
 ```
 
-Each card should be readable without Garden:
+## Why This Exists
 
-```md
+Agent guidance files help with discovery, but they do not guarantee behavior. Agents can see a rule and still violate it when implementation constraints pile up.
+
+The useful tool is not another AI reviewer. The useful tool is deterministic review context:
+
+```txt
+changed files
+-> scoped repo guidance
+-> suggested verification
+-> verification-surface warnings
+```
+
+That gives reviewers a compact way to ask:
+
+- Which local repo rules apply here?
+- Which checks are supposed to enforce those rules?
+- Did the PR weaken tests, CI, lint config, build scripts, or verification guidance?
+
+## Product Shape
+
+Garden should grow into a GitHub PR reporter backed by a small local CLI.
+
+In a PR, Garden should produce a compact summary:
+
+```txt
+Garden review context
+
+Changed:
+  internal/cmd/root.go
+
+Relevant constraint:
+  .garden/context/app-layer-architecture.md
+  matched: internal/cmd/**
+
+Suggested verification:
+  env GOCACHE=/tmp/garden-go-build go test ./...
+  rg '"github.com/aric/garden/internal/agents"' internal/cmd
+
+Verification surfaces changed:
+  none
+```
+
+The first implemented slice is the local preview command. It exists primarily as the engine behind the later PR reporter:
+
+```sh
+garden check --changed internal/cmd/root.go
+```
+
+Later CI-oriented input modes should build on the same report engine:
+
+```sh
+garden check --changed-file-list changed-files.txt
+garden check --git-diff
+```
+
+## Data Model
+
+Garden context should stay in normal Markdown files.
+
+`AGENTS.md` remains the always-visible router for agents before they edit. Context cards become the shared data layer for both agent routing and PR review.
+
+```txt
+AGENTS.md = compact before-coding router
+.garden/context/*.md = scoped guidance and verification notes
+garden check = changed-files to review evidence
+```
+
+Do not put long explanations, PR-specific summaries, or verification command lists into `AGENTS.md`.
+
+For agent workflows, `AGENTS.md` is the discovery layer. For review and CI workflows, `garden check` generates task-specific summaries on demand.
+
+Cards should stay readable without Garden:
+
+````md
 ---
 scope:
-  - src/routes/**
-tags:
-  - database
-  - tenant-scoping
+  - internal/cmd/**
 ---
 
-Route files should not import DB clients directly.
+# App Layer Architecture
 
-Use query modules instead. They centralize tenant scoping, audit logging,
-and permission checks.
+`internal/cmd` owns Cobra command wiring.
+Commands should not bypass `internal/app` to call lower-level packages directly.
+
+## Verification
+
+Run:
+
+```sh
+env GOCACHE=/tmp/garden-go-build go test ./...
+rg '"github.com/aric/garden/internal/agents"' internal/cmd
 ```
 
-The Markdown body is the repo knowledge. The frontmatter is indexing metadata.
+Expected:
 
-## AGENTS.md Router
+- Tests pass.
+- `internal/cmd` has no direct imports of `internal/agents`.
+````
 
-Garden should manage a compact generated section inside `AGENTS.md`:
+The `## Verification` section should start as a Markdown convention. Do not add a schema until dogfooding proves the need.
 
-```md
-### Garden Context
+## Verification Surface Awareness
 
-Detailed agent context lives in `.garden/context/*.md`.
+Checks only act like physical constraints if they cannot be quietly weakened.
 
-Before editing a listed area, inspect the matching context card.
+Garden should call out changed verification surfaces, especially:
 
-Index:
-[Garden Context Index]|root:.garden/context
-|IMPORTANT:Before editing a listed area, inspect the matching context card
-|src/routes/**:.garden/context/routes-query-modules.md
-|internal/contextcard/**:.garden/context/context-card-format.md
-|**/*:.garden/context/product-direction.md
+- Test files.
+- CI workflows.
+- Lint and formatting configs.
+- Build scripts.
+- Garden context cards.
+- Verification sections inside cards.
+
+A PR that changes implementation and its checks is not automatically wrong. It should be higher-attention.
+
+CI should prefer approved checks over arbitrary commands copied from an untrusted PR.
+
+Garden is not the security boundary. Branch protection, code owners, CI permissions, and human review own enforcement. Garden's job is to make weakening the boundary obvious.
+
+## First Version
+
+The first version should be boring and deterministic.
+
+Build:
+
+- Changed-file input.
+- Deterministic scope matching from context cards.
+- Compact text output.
+- Suggested verification extraction from `## Verification` sections.
+- Verification-surface warnings.
+- Local report-only CLI usage.
+
+Build next:
+
+- Report-only GitHub CI usage.
+- `--changed-file-list` input.
+- `--git-diff` input.
+
+Scope matching should use card `scope` globs, not LLM judgment. The same changed files should always produce the same card list.
+
+Do not build yet:
+
+- AI judgment about relevance.
+- Automatic execution of arbitrary verification commands.
+- Blocking uncovered files by default.
+- A full policy engine.
+- A custom editor or card-editing workflow.
+
+## Success Criteria
+
+Garden is worth continuing if its PR summary makes review faster and less dependent on memory.
+
+For this repo, the first dogfood test is:
+
+```txt
+When a PR changes internal/cmd/root.go,
+Garden points to app-layer-architecture.md,
+shows the relevant checks,
+and flags if tests or context cards changed too.
 ```
 
-The agent sees that Garden exists, which files have guidance, and which card to open. The agent then uses ordinary file-reading tools to inspect the card only when needed.
+If the summary is noisy, vague, or ignored, stop and simplify.
 
-Garden should not ask agents to run a second discovery command when `AGENTS.md` already contains the map. For agent workflows, `AGENTS.md` is the discovery layer.
+## Existing Commands
 
-## Core Workflow
-
-Garden should prove value by improving the static `AGENTS.md` router and context-card workflow.
-
-## Initial Command Shape
-
-The likely core commands are:
+Keep the current foundation:
 
 ```txt
 garden init
@@ -98,88 +199,20 @@ garden agents sync
 garden lint
 ```
 
-`garden new <slug>` should create a Markdown context card template in `.garden/context/<slug>.md`.
-
-Example:
+The next command should serve the PR reporter:
 
 ```txt
-garden new routes-query-modules --scope "src/routes/**" --tag database
+garden check
 ```
 
-Generated card:
+Avoid adding commands that wrap normal Markdown browsing or editing. Context cards should remain files that humans and agents can read and edit with ordinary tools.
 
-```md
----
-scope:
-  - src/routes/**
-tags:
-  - database
----
+Avoid expanding Garden into a general docs manager, memory system, or AI review product.
 
-# Routes Query Modules
+## Sources And Influences
 
-Write the repo context here.
-```
-
-The file path/slug is the card identity. No separate `id` field is needed.
-
-`garden remove` should delete a context card. `garden agents sync` should then remove it from the `AGENTS.md` router/index.
-
-`garden agents sync` should update the `AGENTS.md` router/index.
-
-`garden lint` should protect the quality of the context system.
-
-Editing should happen directly in the Markdown card. Humans can use their editor. Agents can use normal file-edit tools. Garden should validate and sync the result, not wrap normal Markdown editing in another command.
-
-The required card metadata should stay small:
-
-```yaml
-scope:
-  - src/routes/**
-```
-
-Optional tags can provide labels for human organization:
-
-```yaml
-tags:
-  - database
-  - tenant-scoping
-```
-
-`priority` is not part of the new core model. The card path/slug is the identity, `scope` drives routing, and optional `tags` are only labels for human organization.
-
-Additional commands that wrap normal file browsing or editing are not part of the core product shape. If Markdown cards are the source of truth, normal shell/editor tools such as `ls`, `rg`, file reads, and file edits are already good enough. Garden's unique value is structure, `AGENTS.md` sync, and context health.
-
-## Lint Scope
-
-`garden lint` should start as a basic correctness check. It should only enforce what Garden needs in order to trust the context-card system and regenerate the `AGENTS.md` index.
-
-Initial checks:
-
-- Each `.garden/context/*.md` file has YAML frontmatter.
-- `scope` exists and has at least one non-empty glob.
-- `scope` does not contain `CHANGE_ME`.
-- `tags`, if present, is a list.
-- Scope metadata does not contain compact-index delimiters or control characters that would make `AGENTS.md` unsyncable.
-- The Markdown body is non-empty.
-- The card filename/slug is valid.
-- `AGENTS.md` has the Garden managed block.
-- The `AGENTS.md` index matches the current context cards.
-
-Avoid subjective lint rules in the first version. Do not lint vague tags, secret-like words, or "too many scopes" until there is a concrete product reason and a low-false-positive rule.
-
-## Vercel-Inspired Direction
-
-Vercel's public guidance supports the router approach:
-
-- Repo guidance files like `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, and `.github/copilot-instructions.md` can guide agent behavior.
-- A compact `AGENTS.md` index can outperform approaches that hide guidance elsewhere, because the agent reliably sees it.
-- Full reference material can live outside `AGENTS.md`, with the always-visible file pointing agents to the right place.
-
-Garden should push that pattern further: keep `AGENTS.md` small, make detailed context card-based, and maintain the index automatically.
-
-## Sources
-
-- Vercel changelog: https://vercel.com/changelog/vercel-agent-code-reviews-now-follow-your-code-guidelines
-- Vercel blog on `AGENTS.md` evals: https://vercel.com/blog/agents-md-outperforms-skills-in-our-agent-evals
-- Vercel agent readability spec: https://vercel.com/kb/guide/agent-readability-spec
+- Constraint decay paper: https://arxiv.org/abs/2605.06445
+- Bob Martin response: rule files are advisory; tests and analysis are physical constraints.
+- CODEOWNERS: deterministic changed-file-to-reviewer routing.
+- Danger: deterministic PR-time automation.
+- AGENTS.md and agent rules: useful for before-coding discovery, insufficient as enforcement.

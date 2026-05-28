@@ -189,12 +189,12 @@ func (a *App) Check(input CheckInput) (CheckReport, error) {
 	}
 	report, err := review.BuildReport(review.Input{
 		ChangedPaths: input.ChangedPaths,
-		Cards:        reviewCards(cards),
+		Cards:        reviewCardsFromApp(cards),
 	})
 	if err != nil {
 		return CheckReport{}, err
 	}
-	return appCheckReport(report), nil
+	return checkReportFromReview(report), nil
 }
 
 type localAgentsFile struct {
@@ -309,7 +309,7 @@ func appFindings(findings []agents.Finding) []Finding {
 	return appFindings
 }
 
-func reviewCards(cards []Card) []review.Card {
+func reviewCardsFromApp(cards []Card) []review.Card {
 	reviewCards := make([]review.Card, 0, len(cards))
 	for _, card := range cards {
 		reviewCards = append(reviewCards, review.Card{
@@ -321,25 +321,25 @@ func reviewCards(cards []Card) []review.Card {
 	return reviewCards
 }
 
-func appCheckReport(report review.Report) CheckReport {
+func checkReportFromReview(report review.Report) CheckReport {
 	return CheckReport{
-		ChangedFiles: appCheckChangedFiles(report.ChangedFiles),
-		Warnings:     appCheckWarnings(report.Warnings),
+		ChangedFiles: checkChangedFilesFromReview(report.ChangedFiles),
+		Warnings:     checkWarningsFromReview(report.Warnings),
 	}
 }
 
-func appCheckChangedFiles(changedFiles []review.ChangedFile) []CheckChangedFile {
+func checkChangedFilesFromReview(changedFiles []review.ChangedFile) []CheckChangedFile {
 	appFiles := make([]CheckChangedFile, 0, len(changedFiles))
 	for _, changedFile := range changedFiles {
 		appFiles = append(appFiles, CheckChangedFile{
 			Path:  changedFile.Path,
-			Cards: appCheckMatchedCards(changedFile.Cards),
+			Cards: checkMatchedCardsFromReview(changedFile.Cards),
 		})
 	}
 	return appFiles
 }
 
-func appCheckMatchedCards(cards []review.MatchedCard) []CheckMatchedCard {
+func checkMatchedCardsFromReview(cards []review.MatchedCard) []CheckMatchedCard {
 	appCards := make([]CheckMatchedCard, 0, len(cards))
 	for _, card := range cards {
 		appCards = append(appCards, CheckMatchedCard{
@@ -351,7 +351,7 @@ func appCheckMatchedCards(cards []review.MatchedCard) []CheckMatchedCard {
 	return appCards
 }
 
-func appCheckWarnings(warnings []review.Warning) []CheckWarning {
+func checkWarningsFromReview(warnings []review.Warning) []CheckWarning {
 	appWarnings := make([]CheckWarning, 0, len(warnings))
 	for _, warning := range warnings {
 		appWarnings = append(appWarnings, CheckWarning{

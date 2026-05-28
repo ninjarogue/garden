@@ -177,6 +177,10 @@ Do not let `internal/cmd` call `internal/review` directly. Do not let `internal/
 - Match scope globs against slash-separated repo paths.
 - Preserve `*` as one-segment matching and `**` as cross-directory matching.
 
+Code-quality follow-up completed:
+
+- Renamed app DTO mapping helpers for clarity: `reviewCards` -> `reviewCardsFromApp`, `appCheckReport` -> `checkReportFromReview`, with matching names like `checkChangedFilesFromReview`, `checkMatchedCardsFromReview`, and `checkWarningsFromReview`.
+
 ### Key Decisions
 
 - Start with repeated `--changed` flags only.

@@ -211,8 +211,8 @@ Run tests.
 
 	out, _, err := execute(garden,
 		"check",
-		"--changed", "internal/cmd/root.go",
-		"--changed", "internal/cmd/root_test.go",
+		"internal/cmd/root.go",
+		"internal/cmd/root_test.go",
 	)
 	if err != nil {
 		t.Fatalf("check returned error: %v", err)
@@ -226,14 +226,14 @@ Run tests.
 	assertContains(t, out, "  internal/cmd/root_test.go: changed test file\n")
 }
 
-func TestCheckCommandRequiresChangedFlag(t *testing.T) {
+func TestCheckCommandRequiresChangedPath(t *testing.T) {
 	garden := app.New(app.Options{Root: t.TempDir()})
 
 	_, _, err := execute(garden, "check")
 	if err == nil {
 		t.Fatal("expected check command error")
 	}
-	if !strings.Contains(err.Error(), "at least one --changed path is required") {
+	if !strings.Contains(err.Error(), "at least one changed path is required") {
 		t.Fatalf("error = %q", err.Error())
 	}
 }

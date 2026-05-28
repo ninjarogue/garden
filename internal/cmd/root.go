@@ -163,15 +163,17 @@ func newLintCommand(garden *app.App) *cobra.Command {
 }
 
 func newCheckCommand(garden *app.App) *cobra.Command {
-	var input app.CheckInput
-	cmd := &cobra.Command{
-		Use:   "check",
+	return &cobra.Command{
+		Use:   "check <changed-path>...",
 		Short: "Report review context for changed files",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			if len(input.ChangedPaths) == 0 {
-				return fmt.Errorf("at least one --changed path is required")
+		Args: func(_ *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return fmt.Errorf("at least one changed path is required")
 			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			input := app.CheckInput{ChangedPaths: args}
 			report, err := garden.Check(input)
 			if err != nil {
 				return err
@@ -179,6 +181,4 @@ func newCheckCommand(garden *app.App) *cobra.Command {
 			return output.WriteCheckReport(cmd.OutOrStdout(), report)
 		},
 	}
-	cmd.Flags().StringArrayVar(&input.ChangedPaths, "changed", nil, "changed repo-relative path (repeatable)")
-	return cmd
 }

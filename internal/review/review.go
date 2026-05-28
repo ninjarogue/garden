@@ -49,7 +49,8 @@ func BuildReport(input Input) (Report, error) {
 	}
 	sort.Strings(changedPaths)
 
-	cards := append([]Card(nil), input.Cards...)
+	cards := make([]Card, len(input.Cards))
+	copy(cards, input.Cards)
 	sort.Slice(cards, func(i, j int) bool {
 		return cards[i].Path < cards[j].Path
 	})

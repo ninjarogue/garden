@@ -124,6 +124,7 @@ func newAgentsCommand(garden *app.App) *cobra.Command {
 
 func newAgentsSyncCommand(garden *app.App) *cobra.Command {
 	var input app.AgentsSyncInput
+	var verbose bool
 	cmd := &cobra.Command{
 		Use:   "sync",
 		Short: "Refresh generated Garden AGENTS.md context index",
@@ -133,10 +134,11 @@ func newAgentsSyncCommand(garden *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return output.WriteAgentsChange(cmd.OutOrStdout(), change, "sync")
+			return output.WriteAgentsChange(cmd.OutOrStdout(), change, "sync", verbose)
 		},
 	}
 	cmd.Flags().BoolVar(&input.Apply, "apply", false, "write AGENTS.md instead of previewing")
+	cmd.Flags().BoolVar(&verbose, "verbose", false, "show the generated diff when applying")
 	return cmd
 }
 

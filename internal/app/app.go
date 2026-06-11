@@ -39,8 +39,9 @@ type CheckInput struct {
 }
 
 type CheckReport struct {
-	ChangedFiles []CheckChangedFile
-	Warnings     []CheckWarning
+	ChangedFiles           []CheckChangedFile
+	SuggestedVerifications []CheckSuggestedVerification
+	Warnings               []CheckWarning
 }
 
 type CheckChangedFile struct {
@@ -51,6 +52,10 @@ type CheckChangedFile struct {
 type CheckMatchedCard struct {
 	Path         string
 	MatchedScope string
+}
+
+type CheckSuggestedVerification struct {
+	Path         string
 	Verification string
 }
 
@@ -323,8 +328,9 @@ func reviewCardsFromApp(cards []Card) []review.Card {
 
 func checkReportFromReview(report review.Report) CheckReport {
 	return CheckReport{
-		ChangedFiles: checkChangedFilesFromReview(report.ChangedFiles),
-		Warnings:     checkWarningsFromReview(report.Warnings),
+		ChangedFiles:           checkChangedFilesFromReview(report.ChangedFiles),
+		SuggestedVerifications: checkSuggestedVerificationsFromReview(report.SuggestedVerifications),
+		Warnings:               checkWarningsFromReview(report.Warnings),
 	}
 }
 
@@ -345,10 +351,20 @@ func checkMatchedCardsFromReview(cards []review.MatchedCard) []CheckMatchedCard 
 		appCards = append(appCards, CheckMatchedCard{
 			Path:         card.Path,
 			MatchedScope: card.MatchedScope,
-			Verification: card.Verification,
 		})
 	}
 	return appCards
+}
+
+func checkSuggestedVerificationsFromReview(suggestions []review.SuggestedVerification) []CheckSuggestedVerification {
+	appSuggestions := make([]CheckSuggestedVerification, 0, len(suggestions))
+	for _, suggestion := range suggestions {
+		appSuggestions = append(appSuggestions, CheckSuggestedVerification{
+			Path:         suggestion.Path,
+			Verification: suggestion.Verification,
+		})
+	}
+	return appSuggestions
 }
 
 func checkWarningsFromReview(warnings []review.Warning) []CheckWarning {

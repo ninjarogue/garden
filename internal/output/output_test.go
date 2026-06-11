@@ -14,7 +14,7 @@ func TestWriteAgentsChangePreviewWritesDiffAndPreviewMessage(t *testing.T) {
 		Before:  "old\n",
 		After:   "new\n",
 		Applied: false,
-	}, "sync"); err != nil {
+	}, "sync", false); err != nil {
 		t.Fatalf("WriteAgentsChange returned error: %v", err)
 	}
 
@@ -36,7 +36,7 @@ func TestWriteAgentsChangePreviewIncludesLintFindings(t *testing.T) {
 			Code:     "stale-garden-index",
 			Message:  "AGENTS.md Garden index is stale",
 		}},
-	}, "sync"); err != nil {
+	}, "sync", false); err != nil {
 		t.Fatalf("WriteAgentsChange returned error: %v", err)
 	}
 
@@ -49,18 +49,52 @@ func TestWriteAgentsChangePreviewIncludesLintFindings(t *testing.T) {
 	}
 }
 
-func TestWriteAgentsChangeAppliedWritesNoChangesAndAppliedMessage(t *testing.T) {
+func TestWriteAgentsChangeAppliedQuietWritesOnlyAppliedMessage(t *testing.T) {
+	var buf bytes.Buffer
+	if err := WriteAgentsChange(&buf, app.AgentsChange{
+		Path:    "AGENTS.md",
+		Before:  "old\n",
+		After:   "new\n",
+		Applied: true,
+	}, "sync", false); err != nil {
+		t.Fatalf("WriteAgentsChange returned error: %v", err)
+	}
+
+	want := "Applied AGENTS.md sync.\n"
+	if buf.String() != want {
+		t.Fatalf("output = %q, want %q", buf.String(), want)
+	}
+}
+
+func TestWriteAgentsChangePreviewNoChangesWritesNoChangesAndPreviewMessage(t *testing.T) {
 	var buf bytes.Buffer
 	if err := WriteAgentsChange(&buf, app.AgentsChange{
 		Path:    "AGENTS.md",
 		Before:  "same\n",
 		After:   "same\n",
-		Applied: true,
-	}, "sync"); err != nil {
+		Applied: false,
+	}, "sync", false); err != nil {
 		t.Fatalf("WriteAgentsChange returned error: %v", err)
 	}
 
-	want := "No changes for AGENTS.md\nApplied AGENTS.md sync.\n"
+	want := "No changes for AGENTS.md\nPreview only. Re-run with --apply to write AGENTS.md.\n"
+	if buf.String() != want {
+		t.Fatalf("output = %q, want %q", buf.String(), want)
+	}
+}
+
+func TestWriteAgentsChangeAppliedVerboseWritesDiffAndAppliedMessage(t *testing.T) {
+	var buf bytes.Buffer
+	if err := WriteAgentsChange(&buf, app.AgentsChange{
+		Path:    "AGENTS.md",
+		Before:  "old\n",
+		After:   "new\n",
+		Applied: true,
+	}, "sync", true); err != nil {
+		t.Fatalf("WriteAgentsChange returned error: %v", err)
+	}
+
+	want := "--- AGENTS.md\n+++ AGENTS.md\n@@\n-old\n+new\nApplied AGENTS.md sync.\n"
 	if buf.String() != want {
 		t.Fatalf("output = %q, want %q", buf.String(), want)
 	}
@@ -108,8 +142,10 @@ func TestWriteCheckReportWritesCompactReviewContext(t *testing.T) {
 		Cards: []app.CheckMatchedCard{{
 			Path:         ".garden/context/app-layer-architecture.md",
 			MatchedScope: "internal/cmd/**",
-			Verification: "Run:\n\n```sh\nenv GOCACHE=/tmp/garden-go-build go test ./...\n```",
 		}},
+	}}, SuggestedVerifications: []app.CheckSuggestedVerification{{
+		Path:         ".garden/context/app-layer-architecture.md",
+		Verification: "Run:\n\n```sh\nenv GOCACHE=/tmp/garden-go-build go test ./...\n```",
 	}}})
 	if err != nil {
 		t.Fatalf("WriteCheckReport returned error: %v", err)

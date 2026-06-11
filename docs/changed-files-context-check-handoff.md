@@ -1,6 +1,6 @@
 # Changed Files Context Check Handoff
 
-Status: superseded by `docs/check-command-implementation-handoff.md` and the implemented `garden check --changed <path>` command. This note remains as historical feature exploration.
+Status: historical feature exploration. The feature is now implemented as `garden check <changed-path>...`; early command sketches below are not current CLI syntax.
 
 This handoff captures a future Garden feature: given a set of changed files, deterministically report the relevant Garden context cards.
 
@@ -34,7 +34,7 @@ This feature would make scoped context useful in PR review and CI:
 Prefer a narrow command that accepts changed paths explicitly:
 
 ```sh
-garden context check --changed internal/cmd/root.go --changed internal/app/app.go
+garden check internal/cmd/root.go internal/app/app.go
 ```
 
 Potential output:
@@ -51,7 +51,7 @@ internal/app/app.go
     scope: internal/app/**
 ```
 
-The exact command name is not final. Other candidates:
+The implemented command is `garden check`. Earlier candidates were:
 
 - `garden context check`
 - `garden context match`
@@ -64,7 +64,7 @@ The important behavior is the deterministic path-to-card mapping.
 A GitHub Action or CI script could collect PR changed files and call Garden:
 
 ```sh
-garden context check --changed-file-list changed-files.txt
+garden check --changed-file-list changed-files.txt
 ```
 
 The first useful CI mode should probably be non-blocking output:
@@ -194,13 +194,13 @@ If matching semantics become subtle, add property-based tests for order independ
 Build the local command first:
 
 ```sh
-garden context check --changed internal/cmd/root.go
+garden check internal/cmd/root.go
 ```
 
 Once that is solid, add file-list input for CI:
 
 ```sh
-garden context check --changed-file-list changed-files.txt
+garden check --changed-file-list changed-files.txt
 ```
 
 Only after dogfooding the output should Garden consider stricter CI modes.

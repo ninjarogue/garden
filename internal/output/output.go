@@ -9,14 +9,16 @@ import (
 	"github.com/aric/garden/internal/app"
 )
 
-func WriteAgentsChange(w io.Writer, change app.AgentsChange, action string) error {
-	diff := unifiedDiff(filepath.Base(change.Path), change.Before, change.After)
-	if _, err := fmt.Fprint(w, diff); err != nil {
-		return err
-	}
-	if !strings.HasSuffix(diff, "\n") {
-		if _, err := fmt.Fprintln(w); err != nil {
+func WriteAgentsChange(w io.Writer, change app.AgentsChange, action string, verbose bool) error {
+	if !change.Applied || verbose {
+		diff := unifiedDiff(filepath.Base(change.Path), change.Before, change.After)
+		if _, err := fmt.Fprint(w, diff); err != nil {
 			return err
+		}
+		if !strings.HasSuffix(diff, "\n") {
+			if _, err := fmt.Fprintln(w); err != nil {
+				return err
+			}
 		}
 	}
 	if len(change.Findings) > 0 {
@@ -115,26 +117,17 @@ func WriteCheckReport(w io.Writer, report app.CheckReport) error {
 }
 
 func writeSuggestedVerification(w io.Writer, report app.CheckReport) error {
-	wrote := false
-	seen := map[string]bool{}
-	for _, changedFile := range report.ChangedFiles {
-		for _, card := range changedFile.Cards {
-			if card.Verification == "" || seen[card.Path] {
-				continue
-			}
-			seen[card.Path] = true
-			wrote = true
-			if _, err := fmt.Fprintf(w, "  %s\n", card.Path); err != nil {
-				return err
-			}
-			if err := writeIndentedBlock(w, card.Verification, "    "); err != nil {
-				return err
-			}
-		}
-	}
-	if !wrote {
+	if len(report.SuggestedVerifications) == 0 {
 		_, err := fmt.Fprintln(w, "  none")
 		return err
+	}
+	for _, suggestion := range report.SuggestedVerifications {
+		if _, err := fmt.Fprintf(w, "  %s\n", suggestion.Path); err != nil {
+			return err
+		}
+		if err := writeIndentedBlock(w, suggestion.Verification, "    "); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -83,14 +83,20 @@ func TestCheckReturnsAppOwnedReportFromInjectedStore(t *testing.T) {
 	if store.loadAllCalls != 1 {
 		t.Fatalf("LoadAll calls = %d, want 1", store.loadAllCalls)
 	}
-	want := CheckReport{ChangedFiles: []CheckChangedFile{{
-		Path: "internal/cmd/root.go",
-		Cards: []CheckMatchedCard{{
+	want := CheckReport{
+		ChangedFiles: []CheckChangedFile{{
+			Path: "internal/cmd/root.go",
+			Cards: []CheckMatchedCard{{
+				Path:         ".garden/context/app-layer-architecture.md",
+				MatchedScope: "internal/cmd/**",
+			}},
+		}},
+		SuggestedVerifications: []CheckSuggestedVerification{{
 			Path:         ".garden/context/app-layer-architecture.md",
-			MatchedScope: "internal/cmd/**",
 			Verification: "Run tests.",
 		}},
-	}}, Warnings: []CheckWarning{}}
+		Warnings: []CheckWarning{},
+	}
 	assertCheckReport(t, report, want)
 }
 

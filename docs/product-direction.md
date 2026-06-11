@@ -53,13 +53,15 @@ Garden review context
 Changed:
   internal/cmd/root.go
 
-Relevant constraint:
-  .garden/context/app-layer-architecture.md
-  matched: internal/cmd/**
+Relevant constraints:
+  internal/cmd/root.go
+    .garden/context/app-layer-architecture.md
+    matched: internal/cmd/**
 
 Suggested verification:
-  env GOCACHE=/tmp/garden-go-build go test ./...
-  rg '"github.com/aric/garden/internal/agents"' internal/cmd
+  .garden/context/app-layer-architecture.md
+    env GOCACHE=/tmp/garden-go-build go test ./...
+    rg '"github.com/aric/garden/internal/(agents|contextcard|review|scopeglob)"' internal/cmd internal/output --glob '!**/*_test.go'
 
 Verification surfaces changed:
   none
@@ -68,7 +70,7 @@ Verification surfaces changed:
 The first implemented slice is the local preview command. It exists primarily as the engine behind the later PR reporter:
 
 ```sh
-garden check --changed internal/cmd/root.go
+garden check internal/cmd/root.go
 ```
 
 Later CI-oriented input modes should build on the same report engine:
@@ -149,7 +151,7 @@ The first version should be boring and deterministic.
 
 Build:
 
-- Changed-file input.
+- Positional changed-path input.
 - Deterministic scope matching from context cards.
 - Compact text output.
 - Suggested verification extraction from `## Verification` sections.
@@ -189,7 +191,7 @@ If the summary is noisy, vague, or ignored, stop and simplify.
 
 ## Existing Commands
 
-Keep the current foundation:
+Keep the current narrow command set:
 
 ```txt
 garden init
@@ -197,11 +199,6 @@ garden new
 garden remove
 garden agents sync
 garden lint
-```
-
-The next command should serve the PR reporter:
-
-```txt
 garden check
 ```
 

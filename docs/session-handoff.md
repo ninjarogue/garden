@@ -9,7 +9,7 @@ Branch: `master`
 Current branch state:
 
 ```txt
-master includes merged PR #3 and is ahead of origin/master by local docs handoff cleanup commits.
+master includes merged PR #3, scope-glob validation, and positional `garden check` paths.
 ```
 
 What changed after reviewing PR #3:
@@ -55,7 +55,6 @@ Branch has product-direction docs, the first `garden check` implementation slice
 Notable changes:
 
 - `docs/product-direction.md`
-- `docs/check-command-implementation-handoff.md`
 - `docs/changed-files-context-check-handoff.md`
 - `docs/constraint-decay-garden-take.md`
 - `docs/archive/product-direction-2026-05-26.md`
@@ -73,7 +72,7 @@ Latest verification in this session:
 ```sh
 env GOCACHE=/tmp/garden-go-build go test ./...
 env GOCACHE=/tmp/garden-go-build go run ./cmd/garden lint
-env GOCACHE=/tmp/garden-go-build go run ./cmd/garden check --changed go.mod --changed Makefile --changed .golangci.yml --changed internal/cmd/root.go --changed internal/cmd/root_test.go --changed docs/product-direction.md
+env GOCACHE=/tmp/garden-go-build go run ./cmd/garden check go.mod Makefile .golangci.yml internal/cmd/root.go internal/cmd/root_test.go docs/product-direction.md
 rg '"github.com/aric/garden/internal/(agents|contextcard|review|scopeglob)"' internal/cmd internal/output --glob '!**/*_test.go'
 git diff --check
 ```
@@ -121,7 +120,7 @@ Historical archives:
 Implemented slice:
 
 ```sh
-garden check --changed internal/cmd/root.go
+garden check internal/cmd/root.go
 ```
 
 This is a local preview command only. It is the engine for a future PR reporter and does not include GitHub Action integration yet.
@@ -134,10 +133,6 @@ changed paths
 -> suggested verification from cards
 -> path-based verification-surface warnings
 ```
-
-Detailed implementation handoff:
-
-- `docs/check-command-implementation-handoff.md`
 
 Older feature exploration:
 
@@ -155,7 +150,7 @@ internal/output -> internal/app DTOs
 
 Responsibilities:
 
-- `internal/cmd`: Cobra wiring, `--changed` flag, CLI validation, command-level errors.
+- `internal/cmd`: Cobra wiring, positional changed-path arguments, CLI validation, command-level errors.
 - `internal/app`: app-owned `CheckInput` / `CheckReport` DTOs, load cards through `CardStore`, call `internal/review`, adapt DTOs.
 - `internal/review`: pure deterministic report logic.
 - `internal/scopeglob`: Garden scope-glob validation and matching semantics.
@@ -183,7 +178,7 @@ Code-quality follow-up completed:
 
 ### Key Decisions
 
-- Start with repeated `--changed` flags only.
+- Accept changed paths as positional `garden check <changed-path>...` arguments.
 - Do not implement `--git-diff` yet.
 - Do not implement `--changed-file-list` yet.
 - Do not implement a GitHub Action yet.
@@ -236,7 +231,6 @@ The first `garden check` slice does not change AGENTS rendering logic. If contex
 
 ### Maintenance Notes
 
-- `docs/check-command-implementation-handoff.md` is historical implementation guidance for the completed first slice.
 - `docs/changed-files-context-check-handoff.md` is now marked as superseded historical exploration.
 - `docs/session-log.md` has been removed to avoid competing with this handoff.
 - `README.md`, `.garden/context/product-direction.md`, `docs/testing.md`, and `.garden/context/testing-guidelines.md` have been updated for `garden check`.

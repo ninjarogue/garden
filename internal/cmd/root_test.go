@@ -86,9 +86,9 @@ Use query modules.
 	if err != nil {
 		t.Fatalf("agents sync returned error: %v", err)
 	}
-	assertContains(t, out, "--- AGENTS.md\n+++ AGENTS.md\n@@\n")
-	assertContains(t, out, "|src/routes/**:.garden/context/routes-query-modules.md")
-	assertContains(t, out, "Applied AGENTS.md sync.\n")
+	if out != "Applied AGENTS.md sync.\n" {
+		t.Fatalf("stdout = %q", out)
+	}
 
 	agentsData, err := os.ReadFile(filepath.Join(rootDir, "AGENTS.md"))
 	if err != nil {
@@ -96,6 +96,26 @@ Use query modules.
 	}
 	assertContains(t, string(agentsData), agents.AgentsStartMarker)
 	assertContains(t, string(agentsData), "|src/routes/**:.garden/context/routes-query-modules.md")
+}
+
+func TestAgentsSyncCommandApplyVerboseWritesDiff(t *testing.T) {
+	rootDir := t.TempDir()
+	garden := app.New(app.Options{Root: rootDir})
+	writeCard(t, rootDir, "routes-query-modules", `---
+scope:
+  - src/routes/**
+---
+
+Use query modules.
+`)
+
+	out, _, err := execute(garden, "agents", "sync", "--apply", "--verbose")
+	if err != nil {
+		t.Fatalf("agents sync returned error: %v", err)
+	}
+	assertContains(t, out, "--- AGENTS.md\n+++ AGENTS.md\n@@\n")
+	assertContains(t, out, "|src/routes/**:.garden/context/routes-query-modules.md")
+	assertContains(t, out, "Applied AGENTS.md sync.\n")
 }
 
 func TestLintCommandPassesWhenAgentsIndexIsCurrent(t *testing.T) {

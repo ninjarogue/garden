@@ -21,8 +21,9 @@ type Input struct {
 }
 
 type Report struct {
-	ChangedFiles []ChangedFile
-	Warnings     []Warning
+	ChangedFiles           []ChangedFile
+	SuggestedVerifications []SuggestedVerification
+	Warnings               []Warning
 }
 
 type ChangedFile struct {
@@ -33,6 +34,10 @@ type ChangedFile struct {
 type MatchedCard struct {
 	Path         string
 	MatchedScope string
+}
+
+type SuggestedVerification struct {
+	Path         string
 	Verification string
 }
 
@@ -59,6 +64,7 @@ func BuildReport(input Input) (Report, error) {
 	}
 
 	report := Report{ChangedFiles: make([]ChangedFile, 0, len(changedPaths))}
+	suggestedVerificationSeen := map[string]bool{}
 	for _, changedPath := range changedPaths {
 		changedFile := ChangedFile{Path: changedPath}
 		for _, card := range cards {
@@ -66,11 +72,18 @@ func BuildReport(input Input) (Report, error) {
 			if err != nil {
 				return Report{}, fmt.Errorf("%s: %w", card.Path, err)
 			}
+			verification := extractVerification(card.Body)
 			for _, matchedScope := range matchedScopes {
 				changedFile.Cards = append(changedFile.Cards, MatchedCard{
 					Path:         card.Path,
 					MatchedScope: matchedScope,
-					Verification: extractVerification(card.Body),
+				})
+			}
+			if verification != "" && len(matchedScopes) > 0 && !suggestedVerificationSeen[card.Path] {
+				suggestedVerificationSeen[card.Path] = true
+				report.SuggestedVerifications = append(report.SuggestedVerifications, SuggestedVerification{
+					Path:         card.Path,
+					Verification: verification,
 				})
 			}
 		}

@@ -33,15 +33,42 @@ Other guidance.`,
 		t.Fatalf("BuildReport returned error: %v", err)
 	}
 
-	want := Report{ChangedFiles: []ChangedFile{{
-		Path: "internal/cmd/root.go",
-		Cards: []MatchedCard{{
+	want := Report{
+		ChangedFiles: []ChangedFile{{
+			Path: "internal/cmd/root.go",
+			Cards: []MatchedCard{{
+				Path:         ".garden/context/app-layer-architecture.md",
+				MatchedScope: "internal/cmd/**",
+			}},
+		}},
+		SuggestedVerifications: []SuggestedVerification{{
 			Path:         ".garden/context/app-layer-architecture.md",
-			MatchedScope: "internal/cmd/**",
 			Verification: "Run:\n\n```sh\nenv GOCACHE=/tmp/garden-go-build go test ./...\n```",
 		}},
-	}}}
+	}
 	assertReport(t, report, want)
+}
+
+func TestBuildReportGroupsSuggestedVerificationOncePerCard(t *testing.T) {
+	report, err := BuildReport(Input{
+		ChangedPaths: []string{"internal/cmd/root.go", "internal/output/output.go"},
+		Cards: []Card{{
+			Path:  ".garden/context/app-layer-architecture.md",
+			Scope: []string{"internal/cmd/**", "internal/output/**"},
+			Body:  "# App Layer Architecture\n\n## Verification\n\nRun tests.",
+		}},
+	})
+	if err != nil {
+		t.Fatalf("BuildReport returned error: %v", err)
+	}
+
+	want := []SuggestedVerification{{
+		Path:         ".garden/context/app-layer-architecture.md",
+		Verification: "Run tests.",
+	}}
+	if !reflect.DeepEqual(report.SuggestedVerifications, want) {
+		t.Fatalf("suggested verification = %#v, want %#v", report.SuggestedVerifications, want)
+	}
 }
 
 func TestBuildReportNormalizesChangedPathSeparators(t *testing.T) {

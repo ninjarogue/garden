@@ -104,6 +104,8 @@ Sync the generated Garden section in `AGENTS.md`:
 garden agents sync --apply
 ```
 
+Use `--verbose` with `--apply` to print the generated diff while writing.
+
 Preview the same sync without writing:
 
 ```sh
@@ -119,7 +121,7 @@ garden lint
 Report review context for changed files:
 
 ```sh
-garden check --changed internal/cmd/root.go
+garden check internal/cmd/root.go
 ```
 
 Remove a context card:
